@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AMR Fleet Coordination</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <h1>🤖 AMR Fleet Coordination System</h1>
+
+
+    <!-- SIMULATION CONTROLS -->
+
+    <div class="simulation-controls">
+
+        <button id="liveModeBtn">
+            ▶ Live Simulation
+        </button>
+
+        <button id="demoModeBtn">
+            🎬 Demo Mode
+        </button>
+
+        <button id="resetBtn">
+            ↻ Reset
+        </button>
+
+    </div>
+
+
+    <!-- SIMULATION INFORMATION -->
+
+    <div class="simulation-info">
+
+        <p>
+            <strong>Mode:</strong>
+            <span id="modeDisplay">Not Started</span>
+        </p>
+
+        <p>
+            <strong>Current Event:</strong>
+            <span id="eventDisplay">Ready to start</span>
+        </p>
+
+    </div>
+
+
+    <!-- MAIN SIMULATION -->
+
+    <div class="main-container">
+        <div>
+            <!-- WAREHOUSE -->
+
+            <div class="warehouse">
+
+                <div class="shelf shelf1"></div>
+                <div class="shelf shelf2"></div>
+                <div class="shelf shelf3"></div>
+                <div class="shelf shelf4"></div>
+
+                <div class="robot robot1">R1</div>
+                <div class="robot robot2">R2</div>
+                <div class="robot robot3">R3</div>
+
+                <div class="station">PACK</div>
+
+            </div>
+
+            <!-- ACTIVITY LOG -->
+
+            <div class="activity-panel">
+
+                <h2>Activity Log</h2>
+
+                <div id="eventLog"></div>
+
+            </div>
+
+        </div>
+
+
+
+
+
+        <!-- CONTROL PANEL -->
+
+        <div class="panel">
+
+            <h2>Fleet Status</h2>
+
+            <div class="robot-status">
+                <strong>AMR-01</strong>
+                <span id="status1">Available</span>
+            </div>
+
+            <div class="robot-status">
+                <strong>AMR-02</strong>
+                <span id="status2">Available</span>
+            </div>
+
+            <div class="robot-status">
+                <strong>AMR-03</strong>
+                <span id="status3">Available</span>
+            </div>
+
+
+            <h2>Tasks</h2>
+
+            <div id="task-list">
+
+                <div class="task">
+                    <strong>T-001</strong>
+                    <p>Pick from Shelf A</p>
+                    <p>Deliver to Packing</p>
+                    <span class="waiting">Waiting</span>
+                </div>
+
+                <div class="task">
+                    <strong>T-002</strong>
+                    <p>Pick from Shelf B</p>
+                    <p>Deliver to Packing</p>
+                    <span class="waiting">Waiting</span>
+                </div>
+
+                <div class="task">
+                    <strong>T-003</strong>
+                    <p>Pick from Shelf C</p>
+                    <p>Deliver to Packing</p>
+                    <span class="waiting">Waiting</span>
+                </div>
+
+            </div>
+            <h2>🧠 Fleet Decision</h2>
+
+            <div class="decision-box">
+
+                <p>
+                    <strong>Task:</strong>
+                    <span id="decisionTask">Waiting</span>
+                </p>
+
+                <p>
+                    <strong>Robot Comparison:</strong>
+                </p>
+
+                <div id="robotComparison">
+                    Waiting for task...
+                </div>
+
+                <p>
+                    <strong>Decision:</strong>
+                    <span id="decisionRobot">-</span>
+                </p>
+
+                <p>
+                    <strong>Reason:</strong>
+                    <span id="decisionReason">
+                        Waiting for task
+                    </span>
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+</html>

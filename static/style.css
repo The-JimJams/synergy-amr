@@ -1,0 +1,239 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f2f2f2;
+    margin: 0;
+}
+
+h1 {
+    margin: 20px;
+}
+
+
+/* Main layout */
+
+.main-container {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+}
+
+
+/* Warehouse */
+
+.warehouse {
+    position: relative;
+    width: 900px;
+    height: 550px;
+    background: white;
+    border: 5px solid #333;
+}
+
+
+/* Shelves */
+
+.shelf {
+    position: absolute;
+    width: 150px;
+    height: 80px;
+    background: #555;
+    border: 4px solid #222;
+}
+
+.shelf1 {
+    left: 100px;
+    top: 100px;
+}
+
+.shelf2 {
+    left: 100px;
+    top: 350px;
+}
+
+.shelf3 {
+    right: 100px;
+    top: 100px;
+}
+
+.shelf4 {
+    right: 100px;
+    top: 350px;
+}
+
+
+/* Robots */
+
+.robot {
+    position: absolute;
+
+    width: 45px;
+    height: 45px;
+
+    border-radius: 50%;
+
+    background: #2196f3;
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: bold;
+
+    transition:
+        left 0.1s linear,
+        top 0.1s linear;
+
+    z-index: 5;
+}
+
+
+/* Packing station */
+
+.station {
+    position: absolute;
+
+    left: 420px;
+    top: 250px;
+
+    width: 80px;
+    height: 50px;
+
+    background: #4caf50;
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: bold;
+
+    border-radius: 8px;
+}
+
+
+/* Control panel */
+
+.panel {
+    width: 300px;
+
+    background: white;
+
+    border: 2px solid #333;
+
+    padding: 20px;
+
+    text-align: left;
+
+    box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+
+.panel h2 {
+    margin-top: 5px;
+
+    border-bottom: 1px solid #ddd;
+
+    padding-bottom: 8px;
+}
+
+
+/* Robot status */
+
+.robot-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 6px 0;
+    background: #f5f5f5;
+    border-radius: 5px;
+}
+
+.robot-status span {
+    font-weight: bold;
+}
+
+.status-available {
+    color: green;
+}
+
+.status-going-to-pickup {
+    color: #007bff;
+}
+
+.status-waiting---congestion {
+    color: orange;
+}
+
+.status-picking-up {
+    color: purple;
+}
+
+.status-delivering {
+    color: #007bff;
+}
+
+
+/* Tasks */
+
+.task {
+    padding: 12px;
+
+    margin-bottom: 10px;
+
+    background: #f5f5f5;
+
+    border-left: 5px solid #2196f3;
+
+    border-radius: 5px;
+}
+
+.task p {
+    margin: 5px 0;
+
+    font-size: 14px;
+}
+
+.waiting {
+    display: inline-block;
+
+    margin-top: 5px;
+
+    padding: 4px 8px;
+
+    background: #ff9800;
+
+    color: white;
+
+    border-radius: 4px;
+
+    font-size: 12px;
+}
+
+.activity-panel {
+    width: 90%;
+    max-width: 1100px;
+    margin: 20px auto;
+    background: white;
+    border-radius: 10px;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.activity-panel h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+#eventLog {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+#eventLog div {
+    padding: 7px 10px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
