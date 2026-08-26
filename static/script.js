@@ -1,39 +1,42 @@
 /**
  * ============================================================================
- * SYNERGY-AMR v3 — Decentralized Fleet Coordination Engine
+ * SYNERGY-AMR v4 — Realistic Industrial Warehouse & Autonomous Fleet
  * ============================================================================
  * Features:
- *   • A* pathfinding on a 35-node navigation graph (no more stuck robots)
- *   • 5 heterogeneous AMRs with unique profiles
- *   • Priority-based conflict resolution with explainable decision popover
- *   • 4-mode network degradation (Connected → Degraded → Offline → Recovery)
- *   • 5 demo scenarios
+ *   • Natural Open-Floor SLAM Navigation (No fixed lane/track lines)
+ *   • High-fidelity AMR rendering: industrial chassis, wheels, LED headlights,
+ *     LiDAR 360° sweep beam, top payload pallets, and status lighting
+ *   • Realistic warehouse: industrial rack shelving with colorful cargo pallets,
+ *     conveyor roller stations, hazard-bordered staging bays, charging docks
+ *   • A* pathfinding on natural brownfield floor
+ *   • Explainable Decision Popover for conflict negotiation (Priority Score)
+ *   • Heterogeneous fleet profiles & 4-state network degradation
  * ============================================================================
  */
 (function () {
   "use strict";
 
   /* ================================================================
-     1. CONSTANTS & COLORS
+     1. CONSTANTS & THEME
      ================================================================ */
   const W = 960, H = 580;
-  const BOT_R = 13;
+  const BOT_W = 30, BOT_H = 24; // AMR physical dimensions
+  const BOT_R = 14;
   const BASE_SPD = 1.6;
 
   const C = {
-    bg: "#08080c",
-    grid: "rgba(255,255,255,.018)",
-    rack: "#16161e",
-    rackStroke: "#2a2a36",
-    rackLabel: "#4a4a5a",
-    aisle: "rgba(56,189,248,.03)",
-    laneStripe: "rgba(234,179,8,.12)",
-    alcove: "rgba(234,179,8,.06)",
-    alcoveStroke: "rgba(234,179,8,.2)",
-    station: "rgba(34,197,94,.06)",
-    stationStroke: "rgba(34,197,94,.25)",
-    deadZone: "rgba(244,63,94,.06)",
-    deadZoneStroke: "rgba(244,63,94,.25)",
+    floor: "#0b0c10",
+    floorTile: "rgba(255,255,255,.015)",
+    jointLine: "rgba(255,255,255,.03)",
+    rackBody: "#14151c",
+    rackFrame: "#252736",
+    rackLabel: "#606275",
+    dockFill: "rgba(34,197,94,.05)",
+    dockBorder: "rgba(34,197,94,.25)",
+    bayFill: "rgba(234,179,8,.04)",
+    bayBorder: "rgba(234,179,8,.2)",
+    deadZone: "rgba(244,63,94,.05)",
+    deadZoneStroke: "rgba(244,63,94,.3)",
     obstacle: "#ef4444",
     alpha: "#38bdf8",
     beta: "#eab308",
@@ -42,75 +45,78 @@
     epsilon: "#f472b6",
   };
 
+  /* Pallet Cargo Color Palette */
+  const CARGO_COLORS = [
+    { fill: "#3b82f6", stroke: "#60a5fa", label: "SKU-A" },
+    { fill: "#f59e0b", stroke: "#fbbf24", label: "SKU-B" },
+    { fill: "#10b981", stroke: "#34d399", label: "SKU-C" },
+    { fill: "#8b5cf6", stroke: "#a78bfa", label: "SKU-D" },
+    { fill: "#64748b", stroke: "#94a3b8", label: "SKU-E" },
+    { fill: "#d97706", stroke: "#fcd34d", label: "WOOD" },
+  ];
+
   /* ================================================================
-     2. WAREHOUSE MAP
-     ================================================================
-     Racks are arranged in 4 rows × 4 columns with 50px+ gaps between
-     pairs for robot navigation channels.
-
-     Vertical nav channels:  x = 28, 210, 380, 480, 580, 750, 932
-     Horizontal nav channels: y = 28, 148, 290, 430, 550
-  */
+     2. WAREHOUSE MAP (Realistic Storage Layout)
+     ================================================================ */
   const RACKS = [
-    // Row 1 (y: 50–105)
-    { x: 55, y: 50, w: 130, h: 55, label: "A1–A4" },
-    { x: 235, y: 50, w: 120, h: 55, label: "A5–A8" },
-    { x: 605, y: 50, w: 120, h: 55, label: "B1–B4" },
-    { x: 775, y: 50, w: 130, h: 55, label: "B5–B8" },
-    // Row 2 (y: 185–240)
-    { x: 55, y: 185, w: 130, h: 55, label: "C1–C4" },
-    { x: 235, y: 185, w: 120, h: 55, label: "C5–C8" },
-    { x: 605, y: 185, w: 120, h: 55, label: "D1–D4" },
-    { x: 775, y: 185, w: 130, h: 55, label: "D5–D8" },
-    // Row 3 (y: 340–395)
-    { x: 55, y: 340, w: 130, h: 55, label: "E1–E4" },
-    { x: 235, y: 340, w: 120, h: 55, label: "E5–E8" },
-    { x: 605, y: 340, w: 120, h: 55, label: "F1–F4" },
-    { x: 775, y: 340, w: 130, h: 55, label: "F5–F8" },
-    // Row 4 (y: 465–520)
-    { x: 55, y: 465, w: 130, h: 55, label: "G1–G4" },
-    { x: 235, y: 465, w: 120, h: 55, label: "G5–G8" },
-    { x: 605, y: 465, w: 120, h: 55, label: "H1–H4" },
-    { x: 775, y: 465, w: 130, h: 55, label: "H5–H8" },
+    // Row 1 (Top)
+    { x: 55, y: 48, w: 135, h: 56, label: "BAY A1-A4", slots: 4, seed: 1 },
+    { x: 230, y: 48, w: 125, h: 56, label: "BAY A5-A8", slots: 4, seed: 2 },
+    { x: 605, y: 48, w: 125, h: 56, label: "BAY B1-B4", slots: 4, seed: 3 },
+    { x: 770, y: 48, w: 135, h: 56, label: "BAY B5-B8", slots: 4, seed: 4 },
+    // Row 2
+    { x: 55, y: 184, w: 135, h: 56, label: "BAY C1-C4", slots: 4, seed: 5 },
+    { x: 230, y: 184, w: 125, h: 56, label: "BAY C5-C8", slots: 4, seed: 6 },
+    { x: 605, y: 184, w: 125, h: 56, label: "BAY D1-D4", slots: 4, seed: 7 },
+    { x: 770, y: 184, w: 135, h: 56, label: "BAY D5-D8", slots: 4, seed: 8 },
+    // Row 3
+    { x: 55, y: 340, w: 135, h: 56, label: "BAY E1-E4", slots: 4, seed: 9 },
+    { x: 230, y: 340, w: 125, h: 56, label: "BAY E5-E8", slots: 4, seed: 10 },
+    { x: 605, y: 340, w: 125, h: 56, label: "BAY F1-F4", slots: 4, seed: 11 },
+    { x: 770, y: 340, w: 135, h: 56, label: "BAY F5-F8", slots: 4, seed: 12 },
+    // Row 4 (Bottom)
+    { x: 55, y: 466, w: 135, h: 56, label: "BAY G1-G4", slots: 4, seed: 13 },
+    { x: 230, y: 466, w: 125, h: 56, label: "BAY G5-G8", slots: 4, seed: 14 },
+    { x: 605, y: 466, w: 125, h: 56, label: "BAY H1-H4", slots: 4, seed: 15 },
+    { x: 770, y: 466, w: 135, h: 56, label: "BAY H5-H8", slots: 4, seed: 16 },
   ];
 
+  /* Industrial Stations (Conveyor docks & Workstations) */
   const STATIONS = [
-    { x: 6, y: 268, w: 28, h: 44, label: "PICK" },
-    { x: 926, y: 268, w: 28, h: 44, label: "PACK" },
-    { x: 440, y: 4, w: 80, h: 24, label: "INBOUND" },
-    { x: 440, y: 554, w: 80, h: 22, label: "OUTBOUND" },
+    { x: 4, y: 260, w: 32, h: 60, label: "PICKING CONVEYOR", type: "conveyor", side: "left" },
+    { x: 924, y: 260, w: 32, h: 60, label: "PACKING DOCK", type: "conveyor", side: "right" },
+    { x: 430, y: 4, w: 100, h: 26, label: "INBOUND INDUCTION", type: "dock", side: "top" },
+    { x: 430, y: 550, w: 100, h: 26, label: "OUTBOUND DISPATCH", type: "dock", side: "bottom" },
   ];
 
+  /* Staging Bays with Hazard Striping */
   const ALCOVES = [
-    { x: 415, y: 115, w: 55, h: 35, label: "Bay 1" },
-    { x: 490, y: 115, w: 55, h: 35, label: "Bay 2" },
-    { x: 415, y: 425, w: 55, h: 35, label: "Bay 3" },
+    { x: 410, y: 115, w: 60, h: 38, label: "STAGING 01" },
+    { x: 490, y: 115, w: 60, h: 38, label: "STAGING 02" },
+    { x: 410, y: 425, w: 60, h: 38, label: "STAGING 03" },
+    { x: 490, y: 425, w: 60, h: 38, label: "STAGING 04" },
   ];
 
-  // Visual aisle regions (just for rendering)
-  const H_AISLES = [
-    { x: 20, y: 110, w: 920, h: 70 },
-    { x: 20, y: 245, w: 920, h: 90 },
-    { x: 20, y: 400, w: 920, h: 60 },
+  /* Charging Pads */
+  const CHARGING_PADS = [
+    { x: 28, y: 28, label: "PWR 1" },
+    { x: 932, y: 28, label: "PWR 2" },
+    { x: 28, y: 550, label: "PWR 3" },
+    { x: 932, y: 550, label: "PWR 4" },
   ];
-  const V_AISLE = { x: 388, y: 35, w: 184, h: 510 };
+
   const DEAD_ZONE = { x: 590, y: 35, w: 330, h: 195 };
 
   /* ================================================================
-     3. NAVIGATION GRAPH — 7 cols × 5 rows = 35 nodes
-     ================================================================
-     Every node connects to its orthogonal neighbors. Robots use A*
-     to route between nodes and only travel along corridor edges.
-  */
-  const NAV_X = [28, 210, 380, 480, 580, 750, 932];
-  const NAV_Y = [28, 148, 290, 430, 550];
+     3. SLAM NAVIGATION GRAPH (Corridor Network)
+     ================================================================ */
+  const NAV_X = [28, 208, 380, 480, 580, 750, 932];
+  const NAV_Y = [28, 145, 290, 432, 550];
   const NODES = [];
   const ADJ = {};
   const blockedNodes = new Set();
 
-  function nid(r, c) {
-    return `${r}_${c}`;
-  }
+  function nid(r, c) { return `${r}_${c}`; }
 
   function buildGraph() {
     NODES.length = 0;
@@ -128,13 +134,10 @@
     }
   }
 
-  function getNode(id) {
-    return NODES.find((n) => n.id === id);
-  }
+  function getNode(id) { return NODES.find((n) => n.id === id); }
 
   function nearestNode(x, y, skipBlocked) {
-    let best = null,
-      bestD = Infinity;
+    let best = null, bestD = Infinity;
     for (const n of NODES) {
       if (skipBlocked && blockedNodes.has(n.id)) continue;
       const d = Math.hypot(n.x - x, n.y - y);
@@ -156,8 +159,7 @@
     const closed = new Set();
 
     while (open.size) {
-      let cur = null,
-        cf = Infinity;
+      let cur = null, cf = Infinity;
       for (const id of open) {
         const f = fS.get(id) ?? 1e9;
         if (f < cf) {
@@ -178,8 +180,7 @@
       closed.add(cur);
       for (const nb of ADJ[cur] || []) {
         if (closed.has(nb) || blockedNodes.has(nb)) continue;
-        const cn = getNode(cur),
-          nn = getNode(nb);
+        const cn = getNode(cur), nn = getNode(nb);
         const g = (gS.get(cur) ?? 1e9) + Math.hypot(nn.x - cn.x, nn.y - cn.y);
         if (g < (gS.get(nb) ?? 1e9)) {
           from.set(nb, cur);
@@ -193,8 +194,7 @@
   }
 
   function heur(aId, bId) {
-    const a = getNode(aId),
-      b = getNode(bId);
+    const a = getNode(aId), b = getNode(bId);
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
   }
 
@@ -215,50 +215,50 @@
      5. NETWORK MODES
      ================================================================ */
   const NET_MODES = [
-    { name: "Connected", commR: 200, lat: 12, safety: 1.0, color: "#22c55e" },
-    { name: "Degraded", commR: 100, lat: 250, safety: 1.3, color: "#eab308" },
+    { name: "Connected", commR: 210, lat: 11, safety: 1.0, color: "#22c55e" },
+    { name: "Degraded", commR: 110, lat: 240, safety: 1.3, color: "#eab308" },
     { name: "Offline", commR: 0, lat: 999, safety: 1.5, color: "#f43f5e" },
-    { name: "Recovery", commR: 160, lat: 80, safety: 1.1, color: "#38bdf8" },
+    { name: "Recovery", commR: 170, lat: 75, safety: 1.1, color: "#38bdf8" },
   ];
 
   /* ================================================================
-     6. ROBOT PROFILES — Heterogeneous Fleet
+     6. HETEROGENEOUS FLEET PROFILES
      ================================================================ */
   const PROFILES = [
     {
       id: "alpha", name: "Robot Alpha", letter: "α", color: C.alpha,
       hw: "Jetson Orin Nano", role: "Heavy Lifter",
-      maxPayload: 500, maxSpeed: 1.2, bat: 92,
+      maxPayload: 500, maxSpeed: 1.2, bat: 94,
       svo: 25, svoLabel: "Individualistic",
-      taskPriority: 5, deadlineUrgency: 3,
+      taskPriority: 5, deadlineUrgency: 3, cargoType: "pallet",
     },
     {
       id: "beta", name: "Robot Beta", letter: "β", color: C.beta,
       hw: "Raspberry Pi 5", role: "Agile Runner",
-      maxPayload: 100, maxSpeed: 2.0, bat: 78,
+      maxPayload: 100, maxSpeed: 2.1, bat: 82,
       svo: 88, svoLabel: "Altruistic",
-      taskPriority: 2, deadlineUrgency: 2,
+      taskPriority: 2, deadlineUrgency: 2, cargoType: "tote",
     },
     {
       id: "gamma", name: "Robot Gamma", letter: "γ", color: C.gamma,
       hw: "Jetson Orin NX", role: "Standard Hauler",
-      maxPayload: 250, maxSpeed: 1.5, bat: 95,
+      maxPayload: 250, maxSpeed: 1.5, bat: 96,
       svo: 50, svoLabel: "Prosocial",
-      taskPriority: 3, deadlineUrgency: 4,
+      taskPriority: 3, deadlineUrgency: 4, cargoType: "crate",
     },
     {
       id: "delta", name: "Robot Delta", letter: "δ", color: C.delta,
       hw: "Jetson AGX Orin", role: "Precision Handler",
-      maxPayload: 150, maxSpeed: 1.8, bat: 84,
+      maxPayload: 150, maxSpeed: 1.8, bat: 88,
       svo: 40, svoLabel: "Prosocial",
-      taskPriority: 3, deadlineUrgency: 2,
+      taskPriority: 3, deadlineUrgency: 2, cargoType: "bin",
     },
     {
       id: "epsilon", name: "Robot Epsilon", letter: "ε", color: C.epsilon,
-      hw: "Raspberry Pi 5", role: "Scout",
-      maxPayload: 50, maxSpeed: 2.5, bat: 91,
+      hw: "Raspberry Pi 5", role: "Scout / Courier",
+      maxPayload: 50, maxSpeed: 2.6, bat: 91,
       svo: 60, svoLabel: "Prosocial",
-      taskPriority: 2, deadlineUrgency: 3,
+      taskPriority: 2, deadlineUrgency: 3, cargoType: "small_tote",
     },
   ];
 
@@ -282,7 +282,7 @@
   };
 
   /* ================================================================
-     8. ROBOT CLASS
+     8. AMR AGENT CLASS
      ================================================================ */
   class Bot {
     constructor(p) {
@@ -294,6 +294,7 @@
       this.vy = 0;
       this.spd = 0;
       this.omega = 0;
+      this.lidarAngle = Math.random() * Math.PI * 2;
       this.alive = true;
       this.yielding = false;
       this.yieldTo = null;
@@ -308,7 +309,7 @@
       this.intent = [];
       this.log = [];
       this.curPayload = `${p.role} (${p.maxPayload}kg)`;
-      this.addLog("INIT", `${p.hw} | ${p.role}`);
+      this.addLog("INIT", `SLAM active on ${p.hw}`);
     }
 
     addLog(tag, msg) {
@@ -334,7 +335,6 @@
         this.wpIdx = 0;
         this.wp = this.navPath[0];
       } else {
-        // Can't reach target — try next patrol point
         this.patrolIdx = (this.patrolIdx + 1) % this.patrol.length;
         const start2 = nearestNode(this.x, this.y, true);
         if (start2) {
@@ -363,7 +363,8 @@
         this.vx = this.vy = this.spd = 0;
         return;
       }
-      this.bat = Math.max(12, this.bat - 0.004 * dt);
+      this.bat = Math.max(12, this.bat - 0.003 * dt);
+      this.lidarAngle = (this.lidarAngle + dt * 8) % (Math.PI * 2);
 
       // Dead zone check (scenario 4)
       if (S.scenario === 4) {
@@ -375,22 +376,20 @@
           this.y <= dz.y + dz.h;
         if (inside && !this.inDZ) {
           this.inDZ = true;
-          this.addLog("RF", "Dead zone — LiDAR bubble σ=1.5");
+          this.addLog("RF", "Wi-Fi Blackout — LiDAR safety bubble σ=1.5");
         } else if (!inside && this.inDZ) {
           this.inDZ = false;
-          this.addLog("ZENOH", "P2P mesh restored");
+          this.addLog("ZENOH", "P2P mesh link restored");
         }
       } else {
         this.inDZ = false;
       }
 
-      // Safety radius based on network mode
       const nm = NET_MODES[S.netMode];
       this.safeR =
         BOT_R * nm.safety +
         (this.inDZ ? 8 + Math.sin(S.simT * 4) * 2 : 0);
 
-      // Yielding decay
       if (this.yielding) this.waitTime += dt;
       else this.waitTime = Math.max(0, this.waitTime - dt * 2);
 
@@ -404,9 +403,8 @@
         return;
       }
 
-      // Advance waypoint if close enough
       const d = v2.dist(this, this.wp);
-      if (d < 10) {
+      if (d < 12) {
         this.wpIdx++;
         if (this.wpIdx < this.navPath.length) {
           this.wp = this.navPath[this.wpIdx];
@@ -416,18 +414,17 @@
         }
       }
 
-      // Direction to current waypoint
       const dir = v2.norm(v2.sub(this.wp, this));
       const yieldMult = this.yielding ? 0.12 : 1.0;
-      const dzMult = this.inDZ ? 0.5 : 1.0;
+      const dzMult = this.inDZ ? 0.55 : 1.0;
       const effSpd = this.maxSpeed * yieldMult * dzMult * BASE_SPD;
 
       let vx = dir.x * effSpd;
       let vy = dir.y * effSpd;
 
-      // Proximity slowdown — slow when approaching another robot
+      // Soft decentralized collision deceleration
       const nm = NET_MODES[S.netMode];
-      const minGap = (BOT_R * 2 + 8) * nm.safety;
+      const minGap = (BOT_R * 2 + 10) * nm.safety;
       for (const [id, o] of Object.entries(S.bots)) {
         if (id === this.id || !o.alive) continue;
         const dd = v2.dist(this, o);
@@ -435,7 +432,6 @@
           const rp = v2.sub(o, this);
           const dot = rp.x * vx + rp.y * vy;
           if (dot > 0) {
-            // Converging — scale down proportionally
             const f = Math.max(0.08, dd / (minGap * 2));
             vx *= f;
             vy *= f;
@@ -452,13 +448,12 @@
       this.x = Math.max(BOT_R, Math.min(W - BOT_R, this.x));
       this.y = Math.max(BOT_R, Math.min(H - BOT_R, this.y));
 
-      // Smooth heading
       if (this.spd > 0.03) {
         const tt = Math.atan2(vy, vx);
         let diff = tt - this.theta;
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
-        this.theta += diff * 0.25;
+        this.theta += diff * 0.28;
         this.omega = diff * 3;
       }
     }
@@ -487,7 +482,6 @@
   function checkConflicts() {
     const bots = Object.values(S.bots).filter((b) => b.alive);
 
-    // Clear yields for distant pairs
     for (const b of bots) {
       if (b.yielding && b.yieldTo) {
         const target = S.bots[b.yieldTo];
@@ -500,15 +494,12 @@
 
     for (let i = 0; i < bots.length; i++) {
       for (let j = i + 1; j < bots.length; j++) {
-        const a = bots[i],
-          b = bots[j];
-        // Skip if either is already yielding to someone else
+        const a = bots[i], b = bots[j];
         if (a.yielding && a.yieldTo !== b.id && a.yieldTo) continue;
         if (b.yielding && b.yieldTo !== a.id && b.yieldTo) continue;
 
         const d = v2.dist(a, b);
         if (d < 75 && d > 5) {
-          // Check if converging
           const closing =
             a.vx * (b.x - a.x) + a.vy * (b.y - a.y) > 0 ||
             b.vx * (a.x - b.x) + b.vy * (a.y - b.y) > 0;
@@ -524,7 +515,7 @@
               loser.yielding = true;
               loser.yieldTo = winner.id;
               if (Math.random() < 0.12) {
-                loser.addLog("SVO", `Yield to ${winner.name} (${ls}→${ws})`);
+                loser.addLog("SVO", `Yield to ${winner.name} (${ls} vs ${ws})`);
                 winner.addLog("ORCA", `Priority pass vs ${loser.name}`);
               }
               triggerDecision(winner, loser, ws, ls);
@@ -536,51 +527,24 @@
   }
 
   function triggerDecision(winner, loser, ws, ls) {
-    // Don't spam — only show if no decision active or expiring
     if (S.decision && S.decision.timer > 1.5) return;
-
     const bat = (b) => (b.bat > 60 ? 1 : b.bat > 30 ? 2 : 3);
     const wait = (b) => Math.min(3, Math.floor(b.waitTime));
 
     S.decision = {
       x: (winner.x + loser.x) / 2,
       y: (winner.y + loser.y) / 2,
-      winner,
-      loser,
-      ws,
-      ls,
-      wD: {
-        t: winner.taskPriority,
-        d: winner.deadlineUrgency,
-        w: wait(winner),
-        b: bat(winner),
-      },
-      lD: {
-        t: loser.taskPriority,
-        d: loser.deadlineUrgency,
-        w: wait(loser),
-        b: bat(loser),
-      },
+      winner, loser, ws, ls,
+      wD: { t: winner.taskPriority, d: winner.deadlineUrgency, w: wait(winner), b: bat(winner) },
+      lD: { t: loser.taskPriority, d: loser.deadlineUrgency, w: wait(loser), b: bat(loser) },
       timer: 4.0,
     };
   }
 
   /* ================================================================
      10. SCENARIO PATROLS
-     ================================================================
-     Each scenario defines patrol routes as sequences of nav-graph
-     node IDs.  Robots A* between consecutive patrol waypoints.
-
-     Node ID format: "row_col"  (0-indexed)
-     Grid:   col→  0     1     2     3     4     5     6
-     row 0:       28    210   380   480   580   750   932  (y=28)
-     row 1:        "     "     "     "     "     "     "   (y=148)
-     row 2:        "     "     "     "     "     "     "   (y=290)
-     row 3:        "     "     "     "     "     "     "   (y=430)
-     row 4:        "     "     "     "     "     "     "   (y=550)
-  */
+     ================================================================ */
   const PATROLS = {
-    // 1. ORCA — all 5 cross through center node (2_3)
     1: {
       alpha: ["2_0", "2_3", "2_6", "2_3"],
       beta: ["0_3", "2_3", "4_3", "2_3"],
@@ -588,7 +552,6 @@
       delta: ["1_1", "1_5", "3_5", "3_1"],
       epsilon: ["3_1", "3_5", "1_5", "1_1"],
     },
-    // 2. SVO Yield — Alpha & Beta head-on in main aisle
     2: {
       alpha: ["2_0", "2_6", "2_0"],
       beta: ["2_6", "2_0", "2_6"],
@@ -596,7 +559,6 @@
       delta: ["1_1", "1_3", "3_3", "3_1"],
       epsilon: ["3_5", "1_5", "1_3", "3_3"],
     },
-    // 3. Dynamic Obstacles — wide patrols
     3: {
       alpha: ["1_0", "1_6", "3_6", "3_0"],
       beta: ["2_6", "2_0", "0_0", "0_6"],
@@ -604,7 +566,6 @@
       delta: ["3_1", "1_1", "1_5", "3_5"],
       epsilon: ["4_0", "4_6", "2_6", "2_0"],
     },
-    // 4. Dead Zone (NE quadrant)
     4: {
       alpha: ["1_4", "0_6", "1_6", "2_6", "2_4"],
       beta: ["2_5", "2_1", "4_1", "4_5"],
@@ -612,11 +573,10 @@
       delta: ["0_5", "2_5", "2_3", "0_3"],
       epsilon: ["4_1", "4_5", "2_5", "2_1"],
     },
-    // 5. Node Failure — Beta dead at center (2_3)
     5: {
       alpha: ["2_0", "2_2", "2_3", "2_6"],
       beta: ["2_3"],
-      gamma: ["3_6", "3_5", "2_5", "2_4"], // arrives AFTER alpha
+      gamma: ["3_6", "3_5", "2_5", "2_4"],
       delta: ["1_1", "1_3", "3_3", "3_1"],
       epsilon: ["0_5", "0_1", "4_1", "4_5"],
     },
@@ -677,38 +637,30 @@
       b.setPatrol(patrol[id] || ["2_3"]);
     });
 
-    // Scenario 5: kill Beta
     if (n === 5) {
       S.bots.beta.alive = false;
       S.bots.beta.addLog("FAULT", "Heartbeat timeout > 100ms");
       setTimeout(() => {
         if (S.bots.alpha?.alive)
-          S.bots.alpha.addLog(
-            "MRTA",
-            `Won DC-MRTA auction for ${S.bots.beta.name}`
-          );
+          S.bots.alpha.addLog("MRTA", `Won DC-MRTA auction for ${S.bots.beta.name}`);
       }, 800);
       setTimeout(() => {
         if (S.bots.gamma?.alive)
-          S.bots.gamma.addLog(
-            "MRTA",
-            `Standby — Alpha has priority bid for Beta`
-          );
+          S.bots.gamma.addLog("MRTA", `Standby — Alpha priority bid for Beta`);
       }, 1600);
     }
 
-    // Scenario 3: pre-spawn obstacles
     if (n === 3) {
       spawnObstacle("2_3");
       spawnObstacle("1_3");
     }
 
     const msgs = {
-      1: "ORCA: 5 AMRs crossing 4-way intersection — 50Hz local ORCA",
-      2: "SVO: Beta yields (θ=88° Altruistic) — priority scoring active",
-      3: "Click aisles to spawn/remove obstacles — A* auto-reroute",
-      4: "NE Wi-Fi dead zone — LiDAR safety bubble inflated (σ=1.5)",
-      5: "Beta killed — Alpha wins DC-MRTA auction (staggered arrival)",
+      1: "ORCA: 5 AMRs crossing open 4-way warehouse floor via local SLAM",
+      2: "SVO: Beta yields into staging bay (θ=88° Altruistic) via Priority Score",
+      3: "Click open floor to place cargo obstacles — A* auto-reroutes",
+      4: "NE Wi-Fi blackout — AMRs switch to onboard LiDAR bubble (σ=1.5)",
+      5: "Beta node failure — Alpha wins DC-MRTA bidding with staggered arrival",
     };
     showToast(msgs[n] || "");
     updateInsp();
@@ -745,14 +697,31 @@
   }
 
   /* ================================================================
-     12. CANVAS RENDER
+     12. HIGH-FIDELITY INDUSTRIAL RENDER
      ================================================================ */
   function render(ctx) {
-    ctx.fillStyle = C.bg;
+    // 1. Industrial Concrete / Epoxy Floor (Realistic Open Floor)
+    ctx.fillStyle = C.floor;
     ctx.fillRect(0, 0, W, H);
 
-    // Grid
-    ctx.strokeStyle = C.grid;
+    // Subtle concrete slab expansion joints (realistic industrial floor tiles)
+    ctx.strokeStyle = C.jointLine;
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 120) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 120) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+
+    // Micro surface grid
+    ctx.strokeStyle = C.floorTile;
     ctx.lineWidth = 0.5;
     for (let x = 0; x < W; x += 30) {
       ctx.beginPath();
@@ -767,83 +736,131 @@
       ctx.stroke();
     }
 
-    // Horizontal aisles
-    for (const a of H_AISLES) {
-      ctx.fillStyle = C.aisle;
-      ctx.fillRect(a.x, a.y, a.w, a.h);
-      ctx.strokeStyle = C.laneStripe;
+    // 2. Charging Dock Pads on floor perimeter
+    for (const pad of CHARGING_PADS) {
+      ctx.fillStyle = "rgba(56,189,248,.04)";
+      ctx.strokeStyle = "rgba(56,189,248,.25)";
       ctx.lineWidth = 1;
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y + a.h / 2);
-      ctx.lineTo(a.x + a.w, a.y + a.h / 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.strokeRect(pad.x - 16, pad.y - 16, 32, 32);
+      ctx.fillRect(pad.x - 16, pad.y - 16, 32, 32);
+      // Lightning bolt icon
+      ctx.fillStyle = "rgba(56,189,248,.7)";
+      ctx.font = "10px Inter";
+      ctx.textAlign = "center";
+      ctx.fillText("⚡", pad.x, pad.y + 4);
     }
 
-    // Vertical cross-aisle
-    ctx.fillStyle = C.aisle;
-    ctx.fillRect(V_AISLE.x, V_AISLE.y, V_AISLE.w, V_AISLE.h);
-    ctx.strokeStyle = C.laneStripe;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath();
-    ctx.moveTo(V_AISLE.x + V_AISLE.w / 2, V_AISLE.y);
-    ctx.lineTo(V_AISLE.x + V_AISLE.w / 2, V_AISLE.y + V_AISLE.h);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Alcoves
+    // 3. Staging Bays with Hazard Stripes
     for (const al of ALCOVES) {
-      ctx.fillStyle = C.alcove;
+      ctx.fillStyle = C.bayFill;
       ctx.fillRect(al.x, al.y, al.w, al.h);
-      ctx.strokeStyle = C.alcoveStroke;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = C.bayBorder;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(al.x, al.y, al.w, al.h);
-      ctx.fillStyle = "rgba(234,179,8,.4)";
-      ctx.font = "8px Inter";
+      // Hazard striped top & bottom edge
+      drawHazardStrip(ctx, al.x, al.y, al.w, 4);
+      drawHazardStrip(ctx, al.x, al.y + al.h - 4, al.w, 4);
+      ctx.fillStyle = "rgba(234,179,8,.55)";
+      ctx.font = "8px JetBrains Mono";
       ctx.textAlign = "center";
       ctx.fillText(al.label, al.x + al.w / 2, al.y + al.h / 2 + 3);
     }
 
-    // Racks
+    // 4. Industrial Storage Racks (with realistic cargo inventory)
     for (const r of RACKS) {
-      ctx.fillStyle = "rgba(0,0,0,.2)";
-      ctx.fillRect(r.x + 2, r.y + 2, r.w, r.h);
-      ctx.fillStyle = C.rack;
+      // Drop shadow for depth
+      ctx.fillStyle = "rgba(0,0,0,.45)";
+      ctx.fillRect(r.x + 3, r.y + 3, r.w, r.h);
+
+      // Rack base frame
+      ctx.fillStyle = C.rackBody;
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      ctx.strokeStyle = C.rackStroke;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = C.rackFrame;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(r.x, r.y, r.w, r.h);
-      const ns = 4;
-      ctx.strokeStyle = "rgba(255,255,255,.025)";
-      for (let i = 1; i < ns; i++) {
-        const sx = r.x + (r.w / ns) * i;
+
+      // Vertical structural upright posts (heavy steel beams)
+      const slotW = r.w / r.slots;
+      for (let s = 0; s < r.slots; s++) {
+        const sx = r.x + s * slotW;
+        ctx.strokeStyle = "#2e3144";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx, r.y, slotW, r.h);
+
+        // Render realistic cargo pallets inside slots
+        const cargoIdx = (r.seed * 3 + s * 2) % CARGO_COLORS.length;
+        const cargo = CARGO_COLORS[cargoIdx];
+        const padX = 4, padY = 5;
+        const pw = slotW - padX * 2;
+        const ph = r.h - padY * 2;
+
+        // Wood pallet base
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(sx + padX, r.y + r.h - padY - 3, pw, 3);
+
+        // Pallet container box
+        ctx.fillStyle = cargo.fill;
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(sx + padX + 1, r.y + padY, pw - 2, ph - 4);
+        ctx.strokeStyle = cargo.stroke;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + padX + 1, r.y + padY, pw - 2, ph - 4);
+        ctx.globalAlpha = 1.0;
+
+        // Cross strapping tape on box
+        ctx.strokeStyle = "rgba(0,0,0,.25)";
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(sx, r.y);
-        ctx.lineTo(sx, r.y + r.h);
+        ctx.moveTo(sx + padX + 1, r.y + padY + (ph - 4) / 2);
+        ctx.lineTo(sx + padX + pw - 1, r.y + padY + (ph - 4) / 2);
         ctx.stroke();
       }
+
+      // Bay Header Label Plate
+      ctx.fillStyle = "rgba(10,11,16,.9)";
+      ctx.fillRect(r.x + r.w / 2 - 32, r.y - 6, 64, 11);
+      ctx.strokeStyle = "#383c50";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(r.x + r.w / 2 - 32, r.y - 6, 64, 11);
       ctx.fillStyle = C.rackLabel;
-      ctx.font = "9px JetBrains Mono";
+      ctx.font = "bold 7px JetBrains Mono";
       ctx.textAlign = "center";
-      ctx.fillText(r.label, r.x + r.w / 2, r.y + r.h / 2 + 3);
+      ctx.fillText(r.label, r.x + r.w / 2, r.y + 2);
     }
 
-    // Stations
+    // 5. Stations (Conveyor rollers & Docks)
     for (const st of STATIONS) {
-      ctx.fillStyle = C.station;
+      ctx.fillStyle = C.dockFill;
       ctx.fillRect(st.x, st.y, st.w, st.h);
-      ctx.strokeStyle = C.stationStroke;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = C.dockBorder;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(st.x, st.y, st.w, st.h);
-      ctx.fillStyle = "rgba(34,197,94,.6)";
+
+      if (st.type === "conveyor") {
+        // Draw conveyor rollers
+        const nr = Math.floor(st.h / 8);
+        ctx.strokeStyle = "rgba(255,255,255,.15)";
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < nr; i++) {
+          const ry = st.y + 4 + i * 8;
+          ctx.beginPath();
+          ctx.moveTo(st.x + 3, ry);
+          ctx.lineTo(st.x + st.w - 3, ry);
+          ctx.stroke();
+        }
+      } else {
+        // Dock hazard strip
+        drawHazardStrip(ctx, st.x, st.y, st.w, 4);
+      }
+
+      // Station label
+      ctx.fillStyle = "rgba(34,197,94,.8)";
       ctx.font = "bold 7px Inter";
       ctx.textAlign = "center";
       ctx.fillText(st.label, st.x + st.w / 2, st.y + st.h / 2 + 3);
     }
 
-    // Dead zone (scenario 4)
+    // 6. Wi-Fi Dead Zone (Scenario 4)
     if (S.scenario === 4) {
       const dz = DEAD_ZONE;
       ctx.fillStyle = C.deadZone;
@@ -853,62 +870,55 @@
       ctx.setLineDash([5, 4]);
       ctx.strokeRect(dz.x, dz.y, dz.w, dz.h);
       ctx.setLineDash([]);
-      ctx.fillStyle = "rgba(244,63,94,.5)";
+      ctx.fillStyle = "rgba(244,63,94,.55)";
       ctx.font = "10px Inter";
       ctx.textAlign = "center";
-      ctx.fillText("⚠ WI-FI DEAD ZONE", dz.x + dz.w / 2, dz.y + 16);
+      ctx.fillText("⚠ WI-FI BLACKOUT ZONE", dz.x + dz.w / 2, dz.y + 16);
     }
 
-    // Dynamic obstacles
+    // 7. Dynamic Obstacles (Industrial Cargo Crates)
     for (const obs of S.obstacles) {
-      ctx.fillStyle = "rgba(244,63,94,.1)";
+      ctx.fillStyle = "rgba(244,63,94,.12)";
       ctx.beginPath();
-      ctx.arc(obs.x, obs.y, obs.r + 10, 0, Math.PI * 2);
+      ctx.arc(obs.x, obs.y, obs.r + 8, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = C.obstacle;
-      const h2 = obs.r * 0.7;
-      ctx.fillRect(obs.x - h2, obs.y - h2, h2 * 2, h2 * 2);
-      ctx.strokeStyle = "#fff";
+
+      // Industrial wooden/metal crate box
+      const bw = obs.r * 1.5;
+      ctx.fillStyle = "#b91c1c";
+      ctx.fillRect(obs.x - bw / 2, obs.y - bw / 2, bw, bw);
+      ctx.strokeStyle = "#fca5a5";
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(obs.x - h2, obs.y - h2, h2 * 2, h2 * 2);
-      ctx.strokeStyle = "rgba(255,255,255,.5)";
+      ctx.strokeRect(obs.x - bw / 2, obs.y - bw / 2, bw, bw);
+      // Warning diagonal slash
+      ctx.strokeStyle = "rgba(255,255,255,.6)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(obs.x - 4, obs.y - 4);
-      ctx.lineTo(obs.x + 4, obs.y + 4);
-      ctx.moveTo(obs.x + 4, obs.y - 4);
-      ctx.lineTo(obs.x - 4, obs.y + 4);
+      ctx.moveTo(obs.x - bw / 2 + 2, obs.y - bw / 2 + 2);
+      ctx.lineTo(obs.x + bw / 2 - 2, obs.y + bw / 2 - 2);
+      ctx.moveTo(obs.x + bw / 2 - 2, obs.y - bw / 2 + 2);
+      ctx.lineTo(obs.x - bw / 2 + 2, obs.y + bw / 2 - 2);
       ctx.stroke();
     }
 
-    // Navigation graph nodes (subtle dots)
-    ctx.fillStyle = "rgba(255,255,255,.04)";
-    for (const n of NODES) {
-      if (blockedNodes.has(n.id)) continue;
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // P2P links
+    // 8. P2P Mesh Communication Links
     const nm = NET_MODES[S.netMode];
     const bl = Object.values(S.bots);
     if (nm.commR > 0) {
       for (let i = 0; i < bl.length; i++) {
         for (let j = i + 1; j < bl.length; j++) {
-          const a = bl[i],
-            b = bl[j];
+          const a = bl[i], b = bl[j];
           if (!a.alive || !b.alive) continue;
           const d = v2.dist(a, b);
           if (d <= nm.commR) {
             ctx.save();
             const dead = a.inDZ || b.inDZ;
             ctx.strokeStyle = dead
-              ? "rgba(244,63,94,.35)"
-              : `rgba(56,189,248,${0.12 + 0.2 * (1 - d / nm.commR)})`;
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-            ctx.lineDashOffset = -S.simT * 18;
+              ? "rgba(244,63,94,.4)"
+              : `rgba(56,189,248,${0.15 + 0.25 * (1 - d / nm.commR)})`;
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([4, 4]);
+            ctx.lineDashOffset = -S.simT * 22;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
@@ -919,13 +929,13 @@
       }
     }
 
-    // Intent trajectories
+    // 9. Intent Trajectories (Translucent spline ahead)
     for (const b of bl) {
       if (!b.alive || b.intent.length < 2) continue;
       ctx.save();
       ctx.strokeStyle = b.color;
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.18;
+      ctx.lineWidth = 1.8;
+      ctx.globalAlpha = 0.22;
       ctx.setLineDash([3, 4]);
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
@@ -934,93 +944,190 @@
       ctx.restore();
     }
 
-    // Robots
+    // 10. REALISTIC AUTONOMOUS MOBILE ROBOTS (AMRs)
     for (const b of bl) {
       ctx.save();
       ctx.translate(b.x, b.y);
 
-      // LiDAR safety ring
+      // A. Safety Envelope / LiDAR Ring
       if (b.inDZ || S.netMode === 2) {
         ctx.beginPath();
-        ctx.arc(0, 0, b.safeR + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(244,63,94,.35)";
+        ctx.arc(0, 0, b.safeR + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(244,63,94,.4)";
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
       }
 
-      // Yielding pulsing ring
+      // B. Yielding Status Ring
       if (b.yielding) {
         ctx.beginPath();
-        ctx.arc(0, 0, BOT_R + 6, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(234,179,8,${
-          0.3 + Math.sin(S.simT * 6) * 0.2
-        })`;
+        ctx.arc(0, 0, BOT_R + 8, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(234,179,8,${0.35 + Math.sin(S.simT * 7) * 0.25})`;
         ctx.lineWidth = 2;
         ctx.stroke();
       }
 
-      // Selection ring
+      // C. Selection Halo
       if (S.selBot === b.id) {
         ctx.beginPath();
-        ctx.arc(0, 0, BOT_R + 4, 0, Math.PI * 2);
-        ctx.strokeStyle = "#fff";
+        ctx.arc(0, 0, BOT_R + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
 
-      // Body
-      ctx.fillStyle = b.alive ? b.color : "#3f3f46";
-      ctx.globalAlpha = b.alive ? 1 : 0.45;
-      ctx.beginPath();
-      ctx.arc(0, 0, BOT_R, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,.55)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-
-      // Heading arrow
+      // D. Rotate to AMR heading
       ctx.rotate(b.theta);
-      ctx.fillStyle = "#09090b";
-      ctx.beginPath();
-      ctx.moveTo(BOT_R - 2, -3);
-      ctx.lineTo(BOT_R + 4, 0);
-      ctx.lineTo(BOT_R - 2, 3);
-      ctx.closePath();
+
+      // Forward Headlight Beams (casting light on floor)
+      if (b.alive) {
+        const hGrad = ctx.createRadialGradient(16, 0, 2, 28, 0, 24);
+        hGrad.addColorStop(0, "rgba(254,240,138,.35)");
+        hGrad.addColorStop(1, "rgba(254,240,138,0)");
+        ctx.fillStyle = hGrad;
+        ctx.beginPath();
+        ctx.moveTo(14, -6);
+        ctx.lineTo(38, -14);
+        ctx.lineTo(38, 14);
+        ctx.lineTo(14, 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Differential Drive Wheels (Side Tires)
+      ctx.fillStyle = "#1e1e24";
+      ctx.strokeStyle = "#40404c";
+      ctx.lineWidth = 1;
+      // Left wheel
+      roundRect(ctx, -6, -BOT_H / 2 - 2, 12, 4, 1.5);
       ctx.fill();
+      ctx.stroke();
+      // Right wheel
+      roundRect(ctx, -6, BOT_H / 2 - 2, 12, 4, 1.5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Front & Rear Caster Wheels
+      ctx.fillStyle = "#2a2a34";
+      ctx.beginPath();
+      ctx.arc(10, 0, 2.5, 0, Math.PI * 2);
+      ctx.arc(-10, 0, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // AMR Main Industrial Chassis (Rounded Rectangular Body)
+      ctx.fillStyle = b.alive ? "#1b1c24" : "#2d2d38";
+      roundRect(ctx, -BOT_W / 2, -BOT_H / 2, BOT_W, BOT_H, 6);
+      ctx.fill();
+
+      // Chassis Colored Accent Bumper
+      ctx.strokeStyle = b.alive ? b.color : "#52525b";
+      ctx.lineWidth = 2;
+      roundRect(ctx, -BOT_W / 2, -BOT_H / 2, BOT_W, BOT_H, 6);
+      ctx.stroke();
+
+      // Directional Headlights (LED dots)
+      if (b.alive) {
+        ctx.fillStyle = "#fef08a";
+        ctx.beginPath();
+        ctx.arc(BOT_W / 2 - 2, -5, 1.5, 0, Math.PI * 2);
+        ctx.arc(BOT_W / 2 - 2, 5, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Red Taillights
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(-BOT_W / 2 + 2, -5, 1.2, 0, Math.PI * 2);
+        ctx.arc(-BOT_W / 2 + 2, 5, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Top Cargo Bed / Payload Carrier
+      ctx.fillStyle = b.alive ? b.color : "#3f3f46";
+      ctx.globalAlpha = 0.85;
+      roundRect(ctx, -8, -6, 12, 12, 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      // Center Rotating LiDAR Scanner Turret
+      ctx.fillStyle = "#09090d";
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.6)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // LiDAR 360° Laser Scan Beam (Rotating SLAM sweep)
+      if (b.alive) {
+        ctx.save();
+        ctx.rotate(b.lidarAngle - b.theta);
+        ctx.strokeStyle = `rgba(56,189,248,${0.3 + Math.sin(S.simT * 5) * 0.15})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(26, 0);
+        ctx.stroke();
+        // Laser dot at tip
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(26, 0, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Reset rotation for text
       ctx.rotate(-b.theta);
 
-      // Letter
-      ctx.fillStyle = "#09090b";
-      ctx.font = "bold 10px Inter";
+      // AMR Letter Badge
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 9px Inter";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(b.letter, 0, 1);
+      ctx.fillText(b.letter, 0, 0);
 
-      // Label under robot
-      ctx.fillStyle = "rgba(255,255,255,.7)";
+      // AMR Name Tag
+      ctx.fillStyle = "rgba(255,255,255,.85)";
       ctx.font = "8px JetBrains Mono";
       ctx.textBaseline = "top";
-      ctx.fillText(b.name.split(" ")[1], 0, BOT_R + 4);
+      ctx.fillText(b.name.split(" ")[1], 0, BOT_H / 2 + 4);
 
       ctx.restore();
     }
 
-    // Decision popover (canvas-rendered)
+    // 11. Explainable Decision Popover
     renderDecision(ctx);
   }
 
+  /* Helper to draw industrial hazard stripes */
+  function drawHazardStrip(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.fillStyle = "#eab308";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "#18181b";
+    for (let i = -h; i < w + h; i += 8) {
+      ctx.beginPath();
+      ctx.moveTo(x + i, y);
+      ctx.lineTo(x + i + 4, y);
+      ctx.lineTo(x + i - 4, y + h);
+      ctx.lineTo(x + i - 8, y + h);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   /* ================================================================
-     13. DECISION POPOVER (rendered on canvas)
+     13. DECISION POPOVER
      ================================================================ */
   function renderDecision(ctx) {
     const d = S.decision;
     if (!d || d.timer <= 0) return;
 
-    const pw = 235,
-      ph = 120;
+    const pw = 235, ph = 120;
     let px = d.x + 40;
     let py = d.y - ph / 2;
     if (px + pw > W - 10) px = d.x - pw - 40;
@@ -1031,41 +1138,35 @@
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Background
     ctx.fillStyle = "rgba(11,11,15,.95)";
     roundRect(ctx, px, py, pw, ph, 8);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.1)";
+    ctx.strokeStyle = "rgba(255,255,255,.12)";
     ctx.lineWidth = 1;
     roundRect(ctx, px, py, pw, ph, 8);
     ctx.stroke();
 
-    // Connector line
-    ctx.strokeStyle = "rgba(255,255,255,.1)";
+    ctx.strokeStyle = "rgba(255,255,255,.12)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(d.x, d.y);
     ctx.lineTo(px < d.x ? px + pw : px, py + ph / 2);
     ctx.stroke();
 
-    // Title bar
-    ctx.fillStyle = "rgba(255,255,255,.04)";
+    ctx.fillStyle = "rgba(255,255,255,.05)";
     roundRectTop(ctx, px, py, pw, 20, 8);
     ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.font = "bold 8px Inter";
     ctx.textAlign = "left";
-    ctx.fillText("🔀 INTERSECTION NEGOTIATION", px + 7, py + 13);
+    ctx.fillText("🔀 DECENTRALIZED CONFLICT RESOLUTION", px + 7, py + 13);
 
     let y = py + 28;
-
-    // Formula label
-    ctx.fillStyle = "#5e5e6e";
+    ctx.fillStyle = "#6b7280";
     ctx.font = "7px JetBrains Mono";
-    ctx.fillText("Score = Task + Deadline + Wait + Battery", px + 7, y);
+    ctx.fillText("Score = Task + Urgency + Wait + Battery", px + 7, y);
     y += 12;
 
-    // Winner line
     ctx.fillStyle = d.winner.color;
     ctx.font = "600 9px Inter";
     ctx.textAlign = "left";
@@ -1076,16 +1177,11 @@
     ctx.fillText(`${d.ws}`, px + pw - 7, y);
     y += 11;
     ctx.textAlign = "left";
-    ctx.fillStyle = "#555";
+    ctx.fillStyle = "#64748b";
     ctx.font = "8px JetBrains Mono";
-    ctx.fillText(
-      `T:${d.wD.t}  D:${d.wD.d}  W:${d.wD.w}  B:${d.wD.b}`,
-      px + 14,
-      y
-    );
+    ctx.fillText(`T:${d.wD.t}  D:${d.wD.d}  W:${d.wD.w}  B:${d.wD.b}`, px + 14, y);
     y += 14;
 
-    // Loser line
     ctx.fillStyle = d.loser.color;
     ctx.font = "600 9px Inter";
     ctx.textAlign = "left";
@@ -1096,23 +1192,14 @@
     ctx.fillText(`${d.ls}`, px + pw - 7, y);
     y += 11;
     ctx.textAlign = "left";
-    ctx.fillStyle = "#555";
+    ctx.fillStyle = "#64748b";
     ctx.font = "8px JetBrains Mono";
-    ctx.fillText(
-      `T:${d.lD.t}  D:${d.lD.d}  W:${d.lD.w}  B:${d.lD.b}`,
-      px + 14,
-      y
-    );
+    ctx.fillText(`T:${d.lD.t}  D:${d.lD.d}  W:${d.lD.w}  B:${d.lD.b}`, px + 14, y);
     y += 14;
 
-    // SVO badge
     ctx.fillStyle = C.beta;
     ctx.font = "8px JetBrains Mono";
-    ctx.fillText(
-      `θ_SVO → ${d.loser.svo}° (${d.loser.svoLabel})`,
-      px + 7,
-      y
-    );
+    ctx.fillText(`θ_SVO → ${d.loser.svo}° (${d.loser.svoLabel})`, px + 7, y);
 
     ctx.restore();
   }
@@ -1157,13 +1244,12 @@
     const st = el("iStatus");
     st.textContent = b.alive
       ? b.inDZ
-        ? "DEAD-ZONE"
+        ? "BLACKOUT"
         : b.yielding
           ? "YIELDING"
           : "ONLINE"
       : "OFFLINE";
-    st.className =
-      "status-pill" + (b.alive ? (b.yielding ? " yield" : "") : " off");
+    st.className = "status-pill" + (b.alive ? (b.yielding ? " yield" : "") : " off");
 
     el("iPose").textContent = `${Math.round(b.x)}, ${Math.round(b.y)}`;
     el("iVel").textContent = `${(b.spd / BASE_SPD).toFixed(2)} m/s`;
@@ -1175,12 +1261,10 @@
     const score = calcScore(b);
     el("iScore").textContent = `${score}  (T:${b.taskPriority} D:${b.deadlineUrgency} W:${Math.min(3, Math.floor(b.waitTime))} B:${b.bat > 60 ? 1 : b.bat > 30 ? 2 : 3})`;
 
-    // Comm radius label
     const nm = NET_MODES[S.netMode];
     const crl = el("commRLabel");
     if (crl) crl.textContent = nm.commR || "0";
 
-    // Peers
     const pl = el("iPeers");
     let ph = "";
     for (const [id, o] of Object.entries(S.bots)) {
@@ -1188,26 +1272,15 @@
       const d = Math.round(v2.dist(b, o));
       const inR = nm.commR > 0 && d <= nm.commR;
       const cls = !o.alive ? "dead" : inR ? "ok" : "disc";
-      const txt = !o.alive
-        ? "OFFLINE"
-        : inR
-          ? `${Math.round(nm.lat + d / 15)}ms`
-          : "DISC";
+      const txt = !o.alive ? "OFFLINE" : inR ? `${Math.round(nm.lat + d / 15)}ms` : "DISC";
       ph += `<div class="peer-row"><span>${o.name} (${d}px)</span><span class="peer-tag ${cls}">${txt}</span></div>`;
     }
     pl.innerHTML = ph;
 
-    // Log
     const lg = el("iLog");
     const tagCls = {
-      ORCA: "t-orca",
-      SVO: "t-svo",
-      MRTA: "t-mrta",
-      RF: "t-rf",
-      OBS: "t-obs",
-      INIT: "t-init",
-      ZENOH: "t-zenoh",
-      FAULT: "t-mrta",
+      ORCA: "t-orca", SVO: "t-svo", MRTA: "t-mrta", RF: "t-rf",
+      OBS: "t-obs", INIT: "t-init", ZENOH: "t-zenoh", FAULT: "t-mrta",
     };
     let lh = "";
     for (const e of b.log.slice(0, 6)) {
@@ -1216,13 +1289,9 @@
     }
     lg.innerHTML = lh;
 
-    // Kill button
-    el("killText").textContent = b.alive
-      ? `Kill ${b.name}`
-      : `Revive ${b.name}`;
+    el("killText").textContent = b.alive ? `Kill ${b.name}` : `Revive ${b.name}`;
     el("killBtn").className = "kill-btn" + (b.alive ? "" : " revive");
 
-    // Peer count
     let alive = 0;
     for (const r of Object.values(S.bots)) if (r.alive) alive++;
     el("peerCount").textContent = alive;
@@ -1247,35 +1316,28 @@
      15. EVENTS
      ================================================================ */
   function setupEvents() {
-    // Scenarios
     document
       .querySelectorAll(".sc-btn")
-      .forEach((b) =>
-        b.addEventListener("click", () => loadScenario(+b.dataset.scenario))
-      );
+      .forEach((b) => b.addEventListener("click", () => loadScenario(+b.dataset.scenario)));
 
-    // Play/Pause
     const ppb = document.getElementById("playPauseBtn");
     ppb.addEventListener("click", () => {
       S.running = !S.running;
       ppb.textContent = S.running ? "⏸" : "▶";
     });
 
-    // Speed
     const sb = document.getElementById("speedBtn");
     sb.addEventListener("click", () => {
       S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 0.5 : 1;
       sb.textContent = S.speed + "x";
     });
 
-    // Reset
     document.getElementById("resetBtn").addEventListener("click", () => {
       S.simT = 0;
       initBots();
       loadScenario(S.scenario);
     });
 
-    // Cloud toggle
     const st = document.getElementById("serverToggle");
     const hdr = document.getElementById("appHeader");
     const sl = document.getElementById("serverLabel");
@@ -1290,16 +1352,13 @@
       );
     });
 
-    // Network mode
     document.querySelectorAll(".net-btn").forEach((b) =>
       b.addEventListener("click", () => {
         const mode = +b.dataset.mode;
         S.netMode = mode;
         document
           .querySelectorAll(".net-btn")
-          .forEach((x) =>
-            x.classList.toggle("active", +x.dataset.mode === mode)
-          );
+          .forEach((x) => x.classList.toggle("active", +x.dataset.mode === mode));
         const nm = NET_MODES[mode];
         showToast(
           `Network: ${nm.name}${mode === 2 ? " — LiDAR safety bubble σ=1.5" : nm.commR > 0 ? ` (Rc=${nm.commR}px, ~${nm.lat}ms)` : ""}`
@@ -1310,27 +1369,22 @@
       })
     );
 
-    // Robot tabs
     document.getElementById("robotTabs").addEventListener("click", (e) => {
       const tab = e.target.closest(".tab");
       if (!tab) return;
-      document
-        .querySelectorAll(".tab")
-        .forEach((t) => t.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       S.selBot = tab.dataset.robot;
       updateInsp();
     });
 
-    // Kill
     document.getElementById("killBtn").addEventListener("click", () => {
       const b = S.bots[S.selBot];
       if (!b) return;
       b.alive = !b.alive;
       if (!b.alive) {
         b.addLog("FAULT", "Node killed");
-        let best = null,
-          bestD = Infinity;
+        let best = null, bestD = Infinity;
         for (const [id, o] of Object.entries(S.bots)) {
           if (id === b.id || !o.alive) continue;
           const d = v2.dist(b, o);
@@ -1354,31 +1408,24 @@
       updateInsp();
     });
 
-    // Canvas click
     S.canvas.addEventListener("click", (e) => {
       const rect = S.canvas.getBoundingClientRect();
       const cx = ((e.clientX - rect.left) / rect.width) * W;
       const cy = ((e.clientY - rect.top) / rect.height) * H;
 
-      // Click robot to select
       for (const [id, b] of Object.entries(S.bots)) {
         if (v2.dist({ x: cx, y: cy }, b) < BOT_R + 10) {
           S.selBot = id;
           document
             .querySelectorAll(".tab")
-            .forEach((t) =>
-              t.classList.toggle("active", t.dataset.robot === id)
-            );
+            .forEach((t) => t.classList.toggle("active", t.dataset.robot === id));
           updateInsp();
           return;
         }
       }
 
-      // Scenario 3: spawn/remove obstacles on nav nodes
       if (S.scenario === 3) {
-        const ex = S.obstacles.findIndex(
-          (o) => v2.dist({ x: cx, y: cy }, o) < o.r + 12
-        );
+        const ex = S.obstacles.findIndex((o) => v2.dist({ x: cx, y: cy }, o) < o.r + 12);
         if (ex !== -1) {
           removeObstacle(ex);
           showToast("Obstacle removed — A* paths recalculated");
@@ -1387,12 +1434,9 @@
           if (nn && !blockedNodes.has(nn.id) && v2.dist({ x: cx, y: cy }, nn) < 60) {
             spawnObstacle(nn.id);
             for (const bot of Object.values(S.bots)) {
-              if (bot.alive)
-                bot.addLog("OBS", `Blocked node ${nn.id} — rerouting`);
+              if (bot.alive) bot.addLog("OBS", `Blocked node ${nn.id} — rerouting`);
             }
-            showToast(
-              `Obstacle at (${nn.x}, ${nn.y}) — all robots auto-rerouted`
-            );
+            showToast(`Obstacle placed on floor at (${nn.x}, ${nn.y}) — AMR fleet auto-rerouted`);
           }
         }
       }
