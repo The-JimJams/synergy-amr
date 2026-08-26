@@ -172,7 +172,8 @@ function calculateDistance(robot, task) {
 }
 function calculateScore(robot, task) {
 
-    const distance = calculateDistance(robot, task);
+    const distance =
+        calculateDistance(robot, task);
 
     const batteryPenalty =
         (100 - robot.battery) * 0.2;
@@ -209,18 +210,27 @@ function updateFleetDecision(
         row.className = "comparison-row";
 
         if (item.robot === robotName) {
+
             row.innerHTML =
                 "✓ " +
                 item.robot +
-                " — " +
+                " — Distance: " +
                 item.distance +
-                " cells";
+                " | Battery: " +
+                item.battery +
+                "% | Score: " +
+                item.score;
+
         } else {
+
             row.innerHTML =
                 item.robot +
-                " — " +
+                " — Distance: " +
                 item.distance +
-                " cells";
+                " | Battery: " +
+                item.battery +
+                "% | Score: " +
+                item.score;
         }
 
         comparison.appendChild(row);
@@ -261,7 +271,9 @@ function allocateTask(task) {
         );
         distances.push({
             robot: robotName,
-            distance: distance
+            distance: distance,
+            battery: robot.battery,
+            score: score
         });
 
 
@@ -296,7 +308,7 @@ function allocateTask(task) {
         updateFleetDecision(
             task.id,
             bestRobot,
-            "Shortest distance among available AMRs",
+            "Lowest combined distance + battery score",
             distances
         );
         updateRobotStatus(
@@ -343,6 +355,31 @@ function updateRobotStatus(robotName, status) {
     }
 }
 
+function updateBatteryDisplay(robotName) {
+
+    const robot = robots[robotName];
+
+    if (!robot) return;
+
+    let batteryElement = null;
+
+    if (robotName === "AMR-01") {
+        batteryElement = document.getElementById("battery1");
+    }
+
+    if (robotName === "AMR-02") {
+        batteryElement = document.getElementById("battery2");
+    }
+
+    if (robotName === "AMR-03") {
+        batteryElement = document.getElementById("battery3");
+    }
+
+    if (batteryElement) {
+        batteryElement.textContent =
+            "🔋 " + robot.battery.toFixed(0) + "%";
+    }
+}
 
 const robot1 = document.querySelector(".robot1");
 const robot2 = document.querySelector(".robot2");
@@ -685,6 +722,17 @@ function moveRobot(
         robot.style.top =
             (node.row * cellSize) +
             "px";
+
+        // Battery consumption
+        if (robotName && robots[robotName]) {
+
+            robots[robotName].battery =
+                Math.max(
+                    0,
+                    robots[robotName].battery - 0.2
+                );
+            updateBatteryDisplay(robotName);
+        }
 
         // Update AMR's logical position
         if (robotName && robots[robotName]) {
