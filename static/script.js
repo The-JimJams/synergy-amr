@@ -2240,7 +2240,7 @@
           }
         }
       }
-      meshEl.textContent = nm.commR === 0 ? "Offline (0)" : `${activeLinks} P2P`;
+      meshEl.textContent = nm.commR === 0 ? "0 Links (Offline)" : `${activeLinks} Links`;
       meshEl.style.color = nm.color;
     }
   }
