@@ -1,221 +1,112 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>AMR Fleet Coordination</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synergy AMR — Decentralized Fleet Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
-    <h1>🤖 AMR Fleet Coordination System</h1>
-
-
-    <!-- SIMULATION CONTROLS -->
-
-    <div class="simulation-controls">
-
-        <button id="liveModeBtn">
-            ▶ Live Simulation
-        </button>
-
-        <button id="demoModeBtn">
-            🎬 Demo Mode
-        </button>
-
-        <button id="resetBtn">
-            ↻ Reset
-        </button>
-
-    </div>
-
-
-    <!-- SIMULATION INFORMATION -->
-
-    <div class="simulation-info">
-
-        <p>
-            <strong>Mode:</strong>
-            <span id="modeDisplay">Not Started</span>
-        </p>
-
-        <p>
-            <strong>Current Event:</strong>
-            <span id="eventDisplay">Ready to start</span>
-        </p>
-
-    </div>
-
-
-    <!-- MAIN SIMULATION -->
-
-    <div class="main-container">
-        <div>
-            <!-- WAREHOUSE -->
-
-            <div class="warehouse">
-                <h2 class="warehouse-title">🏭 WAREHOUSE</h2>
-
-                <div class="shelf shelf1">
-                    <span>Shelf A</span>
-                </div>
-
-                <div class="shelf shelf2">
-                    <span>Shelf B</span>
-                </div>
-
-                <div class="shelf shelf3">
-                    <span>Shelf C</span>
-                </div>
-
-                <div class="shelf shelf4">
-                    <span>Shelf D</span>
-                </div>
-
-                <div class="robot robot1">
-                    R1
-
-                </div>
-
-                <div class="robot robot2">
-                    R2
-
-                </div>
-
-                <div class="robot robot3">
-                    R3
-
-                </div>
-
-                <div class="station">
-                    PACKING
-                    <small>Delivery</small>
-                </div>
-
-
-            </div>
-            <div>
-                <div class="warehouse-legend">
-
-                    <strong>Warehouse Legend</strong>
-
-                    <span>🤖 AMR — Autonomous Mobile Robot</span>
-                    <span>📦 Shelf — Task Pickup</span>
-                    <span>🏭 Packing — Delivery Point</span>
-                    <span>⚠️ Waiting — Congestion</span>
-
-                </div>
-            </div>
-
-
-            <!-- ACTIVITY LOG -->
-
-            <div class="activity-panel">
-
-                <h2>Activity Log</h2>
-
-                <div id="eventLog"></div>
-
-            </div>
-
+    <!-- HEADER -->
+    <header class="header" id="appHeader">
+        <div class="header-left">
+            <div class="logo"><span class="logo-icon">⬡</span> SYNERGY<span class="logo-accent">AMR</span></div>
+            <span class="badge"><span class="live-dot"></span> <span id="peerCount">5</span> Peers</span>
         </div>
 
-
-
-
-
-        <!-- CONTROL PANEL -->
-
-        <div class="panel">
-
-            <h2>Fleet Status</h2>
-
-            <div class="robot-status">
-                <strong>AMR-01</strong>
-                <span id="status1">Available</span>
-                <span id="battery1">🔋 90%</span>
-            </div>
-
-            <div class="robot-status">
-                <strong>AMR-02</strong>
-                <span id="status2">Available</span>
-                <span id="battery2">🔋 75%</span>
-            </div>
-
-            <div class="robot-status">
-                <strong>AMR-03</strong>
-                <span id="status3">Available</span>
-                <span id="battery3">🔋 95%</span>
-            </div>
-
-
-            <h2>Tasks</h2>
-
-            <div id="task-list">
-
-                <div class="task">
-                    <strong>T-001</strong>
-                    <p>Pick from Shelf A</p>
-                    <p>Deliver to Packing</p>
-                    <span class="waiting">Waiting</span>
-                </div>
-
-                <div class="task">
-                    <strong>T-002</strong>
-                    <p>Pick from Shelf B</p>
-                    <p>Deliver to Packing</p>
-                    <span class="waiting">Waiting</span>
-                </div>
-
-                <div class="task">
-                    <strong>T-003</strong>
-                    <p>Pick from Shelf C</p>
-                    <p>Deliver to Packing</p>
-                    <span class="waiting">Waiting</span>
-                </div>
-
-            </div>
-            <h2>🧠 Fleet Decision</h2>
-
-            <div class="decision-box">
-
-                <p>
-                    <strong>Task:</strong>
-                    <span id="decisionTask">Waiting</span>
-                </p>
-
-                <p>
-                    <strong>Robot Comparison:</strong>
-                </p>
-
-                <div id="robotComparison">
-                    Waiting for task...
-                </div>
-
-                <p>
-                    <strong>Decision:</strong>
-                    <span id="decisionRobot">-</span>
-                </p>
-
-                <p>
-                    <strong>Reason:</strong>
-                    <span id="decisionReason">
-                        Waiting for task
-                    </span>
-                </p>
-
-            </div>
-
+        <div class="scenario-bar">
+            <button class="sc-btn active" data-scenario="1"><b>1</b> ORCA Crossing</button>
+            <button class="sc-btn" data-scenario="2"><b>2</b> SVO Yield</button>
+            <button class="sc-btn" data-scenario="3"><b>3</b> Obstacles</button>
+            <button class="sc-btn" data-scenario="4"><b>4</b> Dead Zone</button>
+            <button class="sc-btn" data-scenario="5"><b>5</b> Node Failure</button>
         </div>
 
-    </div>
+        <div class="header-right">
+            <div class="net-selector">
+                <span class="net-label">NET</span>
+                <button class="net-btn active" data-mode="0" title="Full P2P mesh via rmw_zenoh">Full</button>
+                <button class="net-btn" data-mode="1" title="150–300ms latency, 20% packet loss">Degraded</button>
+                <button class="net-btn" data-mode="2" title="LiDAR safety bubble σ=1.5">Offline</button>
+                <button class="net-btn" data-mode="3" title="Fast state reconciliation">Recovery</button>
+            </div>
+            <span class="sep"></span>
+            <label class="toggle" title="Sever Central Cloud Gateway">
+                <input type="checkbox" id="serverToggle" checked>
+                <span class="toggle-track"></span>
+                <span class="toggle-label" id="serverLabel">Cloud</span>
+            </label>
+            <span class="sep"></span>
+            <button class="ctrl-btn" id="playPauseBtn" title="Play / Pause">⏸</button>
+            <button class="ctrl-btn mono" id="speedBtn" title="Simulation Speed">1x</button>
+            <button class="ctrl-btn" id="resetBtn" title="Reset Scenario">↻</button>
+        </div>
+    </header>
 
+    <!-- WORKSPACE -->
+    <main class="workspace">
+        <div class="canvas-box">
+            <canvas id="simCanvas" width="960" height="580"></canvas>
 
+            <!-- KPI Strip -->
+            <div class="kpi-strip">
+                <span class="kpi"><span class="kpi-k">Collisions</span> <span class="kpi-v green" id="kpiCol">0</span></span>
+                <span class="kpi-sep"></span>
+                <span class="kpi"><span class="kpi-k">Latency</span> <span class="kpi-v cyan" id="kpiLat">12ms</span></span>
+                <span class="kpi-sep"></span>
+                <span class="kpi"><span class="kpi-k">Throughput</span> <span class="kpi-v green">+24.6%</span></span>
+                <span class="kpi-sep"></span>
+                <span class="kpi"><span class="kpi-k">TTD</span> <span class="kpi-v green">-14%</span></span>
+                <span class="kpi-sep"></span>
+                <span class="kpi"><span class="kpi-k">Net</span> <span class="kpi-v" id="kpiNet" style="color:#22c55e">Connected</span></span>
+                <span class="kpi-sep"></span>
+                <span class="kpi"><span class="kpi-k">Protocol</span> <span class="kpi-v dim">rmw_zenoh</span></span>
+            </div>
 
+            <!-- Toast -->
+            <div class="toast hidden" id="toast"><span class="toast-dot"></span> <span id="toastMsg"></span></div>
+        </div>
+
+        <!-- Inspector Panel -->
+        <aside class="inspector" id="inspector">
+            <div class="tabs" id="robotTabs"></div>
+
+            <div class="insp-hero">
+                <div>
+                    <h2 class="insp-name" id="iName">Robot Alpha</h2>
+                    <p class="insp-hw" id="iHw">Jetson Orin Nano — Heavy Lifter</p>
+                </div>
+                <span class="status-pill" id="iStatus">ONLINE</span>
+            </div>
+
+            <div class="grid2">
+                <div class="card"><span class="card-k">Pose (x, y)</span><span class="card-v mono" id="iPose">0, 0</span></div>
+                <div class="card"><span class="card-k">Velocity</span><span class="card-v mono" id="iVel">0 m/s</span></div>
+                <div class="card"><span class="card-k">Battery</span><span class="card-v green" id="iBat">92%</span></div>
+                <div class="card"><span class="card-k">SVO Angle</span><span class="card-v amber" id="iSvo">θ:25°</span></div>
+            </div>
+
+            <div class="row-card"><span class="card-k">Capacity</span><span class="card-v mono" id="iCap">500kg / 1.2 m/s</span></div>
+            <div class="row-card"><span class="card-k">Payload</span><span class="card-v" id="iPayload">—</span></div>
+            <div class="row-card">
+                <span class="card-k">Priority Score</span>
+                <span class="card-v amber" id="iScore">10</span>
+            </div>
+
+            <div class="section-label">Mesh Peers (Rc ≤ <span id="commRLabel">200</span>px)</div>
+            <div class="peer-list" id="iPeers"></div>
+
+            <div class="section-label">Decision Log</div>
+            <div class="log-box" id="iLog"></div>
+
+            <button class="kill-btn" id="killBtn"><span id="killText">Kill Node</span></button>
+        </aside>
+    </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
-
 </html>
