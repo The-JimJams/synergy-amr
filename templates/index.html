@@ -3,27 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Synergy AMR — Decentralized Fleet Simulator</title>
+    <title>Edge-AI Based Distributed Fleet Coordination for AMRs in Smart Warehouses</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <!-- STARTUP SPLASH & LOADING MODAL (10-15s Initialization Screen) -->
+    <div class="splash-overlay" id="splashScreen">
+        <div class="splash-card">
+            <div class="splash-badge"><span class="splash-dot"></span> ROS 2 Humble · rmw_zenoh P2P Mesh · Edge Compute</div>
+            <h1 class="splash-title">
+                Edge-AI Based Distributed Fleet Coordination<br>
+                <span>for Autonomous Mobile Robots (AMRs) in Smart Warehouses</span>
+            </h1>
+            
+            <p class="splash-statement">
+                This is a sample simulation demonstrating the concept of <b>Edge-AI Based Distributed Fleet Coordination for Autonomous Mobile Robots (AMRs) in Smart Warehouses</b>.
+            </p>
+
+            <!-- Fleet Hardware Grid -->
+            <div class="splash-fleet-grid">
+                <div class="splash-bot-chip chip-alpha">
+                    <span class="bot-dot" style="background:#38bdf8"></span>
+                    <div class="bot-info"><b>Robot Alpha (α)</b><span>Jetson Orin Nano · 500kg Heavy Lifter</span></div>
+                </div>
+                <div class="splash-bot-chip chip-beta">
+                    <span class="bot-dot" style="background:#f59e0b"></span>
+                    <div class="bot-info"><b>Robot Beta (β)</b><span>Raspberry Pi 5 · 2.1 m/s Agile Runner</span></div>
+                </div>
+                <div class="splash-bot-chip chip-gamma">
+                    <span class="bot-dot" style="background:#22c55e"></span>
+                    <div class="bot-info"><b>Robot Gamma (γ)</b><span>Jetson Orin NX · 250kg Standard Hauler</span></div>
+                </div>
+                <div class="splash-bot-chip chip-delta">
+                    <span class="bot-dot" style="background:#c084fc"></span>
+                    <div class="bot-info"><b>Robot Delta (δ)</b><span>Jetson AGX Orin · 1.8 m/s Pallet Mover</span></div>
+                </div>
+            </div>
+
+            <!-- Loading Progress Section -->
+            <div class="splash-progress-sec">
+                <div class="progress-labels">
+                    <span class="progress-step mono" id="splashStepText">Initializing ROS 2 Humble DDS & rmw_zenoh middleware...</span>
+                    <span class="progress-percent mono" id="splashPercent">0%</span>
+                </div>
+                <div class="splash-bar-track">
+                    <div class="splash-bar-fill" id="splashBarFill"></div>
+                </div>
+            </div>
+
+            <div class="splash-footer">
+                <span class="splash-meta">P2P Mesh · ORCA + SVO Altruism · DC-MRTA Distributed Auction</span>
+                <button class="splash-skip-btn" id="splashSkipBtn">Launch Simulator ▶</button>
+            </div>
+        </div>
+    </div>
 
     <!-- HEADER -->
     <header class="header" id="appHeader">
         <div class="header-left">
             <div class="logo"><span class="logo-icon">⬡</span> SYNERGY<span class="logo-accent">AMR</span></div>
-            <span class="badge"><span class="live-dot"></span> <span id="peerCount">5</span> Peers</span>
+            <span class="badge"><span class="live-dot"></span> <span id="peerCount">4</span> Peers</span>
         </div>
 
         <div class="scenario-bar">
-            <button class="sc-btn active" data-scenario="1"><b>1</b> ORCA Crossing</button>
-            <button class="sc-btn" data-scenario="2"><b>2</b> SVO Yield</button>
-            <button class="sc-btn" data-scenario="3"><b>3</b> Obstacles</button>
-            <button class="sc-btn" data-scenario="4"><b>4</b> Dead Zone</button>
-            <button class="sc-btn" data-scenario="5"><b>5</b> Node Failure</button>
+            <button class="sc-btn active" data-scenario="1" title="4-Way Intersection Convergence — ORCA/SVO Conflict & Deadlock Resolution"><b>1</b> 4-Way Cross</button>
+            <button class="sc-btn" data-scenario="2" title="Head-on Corridor Encounter — Altruistic SVO Yielding"><b>2</b> SVO Yield</button>
+            <button class="sc-btn" data-scenario="3" title="Dynamic Aisle Blockage — Real-time LiDAR & A* Re-routing"><b>3</b> Obstacles</button>
+            <button class="sc-btn" data-scenario="4" title="RF Blackout Zone — Decentralized LiDAR Safety Bubble"><b>4</b> Dead Zone</button>
+            <button class="sc-btn" data-scenario="5" title="AMR Node Failure — Autonomous Task Re-auctioning"><b>5</b> Node Failure</button>
         </div>
 
         <div class="header-right">
@@ -35,7 +86,7 @@
                 <button class="net-btn" data-mode="3" title="Fast state reconciliation">Recovery</button>
             </div>
             <span class="sep"></span>
-            <label class="toggle" title="Sever Central Cloud Gateway">
+            <label class="toggle" title="Sever Central Cloud Gateway (Tests Edge Autonomy)">
                 <input type="checkbox" id="serverToggle" checked>
                 <span class="toggle-track"></span>
                 <span class="toggle-label" id="serverLabel">Cloud</span>
@@ -49,61 +100,166 @@
 
     <!-- WORKSPACE -->
     <main class="workspace">
-        <div class="canvas-box">
+        <div class="canvas-box" id="canvasBox">
             <canvas id="simCanvas" width="960" height="580"></canvas>
 
             <!-- KPI Strip -->
             <div class="kpi-strip">
-                <span class="kpi"><span class="kpi-k">Collisions</span> <span class="kpi-v green" id="kpiCol">0</span></span>
+                <div class="kpi-item"><span class="kpi-k">Collisions</span> <span class="kpi-v green" id="kpiCol">0</span></div>
                 <span class="kpi-sep"></span>
-                <span class="kpi"><span class="kpi-k">Latency</span> <span class="kpi-v cyan" id="kpiLat">12ms</span></span>
+                <div class="kpi-item"><span class="kpi-k">Avoided</span> <span class="kpi-v green" id="kpiAvoided">0</span></div>
                 <span class="kpi-sep"></span>
-                <span class="kpi"><span class="kpi-k">Throughput</span> <span class="kpi-v green">+24.6%</span></span>
+                <div class="kpi-item"><span class="kpi-k">P2P Mesh</span> <span class="kpi-v cyan" id="kpiMesh">6 Links</span></div>
                 <span class="kpi-sep"></span>
-                <span class="kpi"><span class="kpi-k">TTD</span> <span class="kpi-v green">-14%</span></span>
+                <div class="kpi-item"><span class="kpi-k">Delivered</span> <span class="kpi-v cyan" id="kpiDelivered">0 pkgs</span></div>
                 <span class="kpi-sep"></span>
-                <span class="kpi"><span class="kpi-k">Net</span> <span class="kpi-v" id="kpiNet" style="color:#22c55e">Connected</span></span>
+                <div class="kpi-item"><span class="kpi-k">Latency</span> <span class="kpi-v green" id="kpiLat">12ms</span></div>
                 <span class="kpi-sep"></span>
-                <span class="kpi"><span class="kpi-k">Protocol</span> <span class="kpi-v dim">rmw_zenoh</span></span>
+                <div class="kpi-item"><span class="kpi-k">Throughput</span> <span class="kpi-v green" id="kpiThroughput">+24.6%</span></div>
+                <span class="kpi-sep"></span>
+                <div class="kpi-item"><span class="kpi-k">Net Mode</span> <span class="kpi-v" id="kpiNet" style="color:#22c55e">Connected</span></div>
             </div>
 
-            <!-- Toast -->
+            <!-- Toast Notification -->
             <div class="toast hidden" id="toast"><span class="toast-dot"></span> <span id="toastMsg"></span></div>
         </div>
 
         <!-- Inspector Panel -->
         <aside class="inspector" id="inspector">
+            <!-- Robot Selection Tabs -->
             <div class="tabs" id="robotTabs"></div>
 
-            <div class="insp-hero">
-                <div>
-                    <h2 class="insp-name" id="iName">Robot Alpha</h2>
-                    <p class="insp-hw" id="iHw">Jetson Orin Nano — Heavy Lifter</p>
+            <!-- View Switcher Tabs (Telemetry vs ROS 2 DDS Topics) -->
+            <div class="sub-tabs">
+                <button class="sub-tab active" id="subTabTele">📊 Telemetry & Control</button>
+                <button class="sub-tab" id="subTabRos">📡 ROS 2 / Zenoh Topics</button>
+            </div>
+
+            <!-- TELEMETRY VIEW -->
+            <div class="tab-content active" id="viewTelemetry">
+                <div class="insp-hero">
+                    <div>
+                        <h2 class="insp-name" id="iName">Robot Alpha</h2>
+                        <p class="insp-hw" id="iHw">Jetson Orin Nano — Heavy Lifter</p>
+                    </div>
+                    <span class="status-pill" id="iStatus">ONLINE</span>
                 </div>
-                <span class="status-pill" id="iStatus">ONLINE</span>
+
+                <!-- Engineer Quick Control Deck -->
+                <div class="insp-actions">
+                    <button class="kill-btn" id="killBtn"><span id="killText">⚡ Emergency Stop</span></button>
+                    <button class="action-btn" id="inspOrderBtn">📦 WMS Order</button>
+                    <button class="action-btn conflict-action-btn" id="triggerConflictBtn">💥 4-Bot Conflict</button>
+                </div>
+
+                <div class="grid2">
+                    <div class="card">
+                        <span class="card-k">Pose (x, y, θ)</span>
+                        <span class="card-v mono" id="iPose">0, 0, 0°</span>
+                    </div>
+                    <div class="card">
+                        <span class="card-k">Speed (v, ω)</span>
+                        <span class="card-v mono" id="iVel">0.00 m/s</span>
+                    </div>
+                    <div class="card">
+                        <div class="card-hdr"><span class="card-k">Battery SOC</span> <span class="card-v green" id="iBat">92%</span></div>
+                        <div class="bat-bar-bg"><div class="bat-bar-fill" id="iBatBar" style="width:92%"></div></div>
+                    </div>
+                    <div class="card">
+                        <span class="card-k">SVO Orientation</span>
+                        <span class="card-v amber" id="iSvo">θ:25° (Ego)</span>
+                    </div>
+                </div>
+
+                <div class="row-card">
+                    <span class="card-k">Hardware Rating</span>
+                    <span class="card-v mono" id="iCap">500kg / 1.2 m/s</span>
+                </div>
+                <div class="row-card">
+                    <span class="card-k">Active Payload</span>
+                    <span class="card-v mono" id="iPayload">Empty (Ready)</span>
+                </div>
+                <div class="row-card">
+                    <span class="card-k">Priority Score</span>
+                    <span class="card-v amber" id="iScore">10 (T:3 D:2 W:1 B:1)</span>
+                </div>
+
+                <div class="section-label">P2P Mesh Peers (rmw_zenoh)</div>
+                <div class="peer-list" id="iPeers"></div>
+
+                <div class="section-label">Decentralized Event Log</div>
+                <div class="log-box" id="iLog"></div>
+                
+                <div class="hint-footer">💡 Right-click map to dispatch | Left-click AMR to inspect</div>
             </div>
 
-            <div class="grid2">
-                <div class="card"><span class="card-k">Pose (x, y)</span><span class="card-v mono" id="iPose">0, 0</span></div>
-                <div class="card"><span class="card-k">Velocity</span><span class="card-v mono" id="iVel">0 m/s</span></div>
-                <div class="card"><span class="card-k">Battery</span><span class="card-v green" id="iBat">92%</span></div>
-                <div class="card"><span class="card-k">SVO Angle</span><span class="card-v amber" id="iSvo">θ:25°</span></div>
+            <!-- ROS 2 & ZENOH TOPICS VIEW -->
+            <div class="tab-content" id="viewRos" style="display:none;">
+                <div class="ros-header">
+                    <span class="ros-title">ROS 2 Humble / rmw_zenoh</span>
+                    <span class="ros-rate" id="rosRate">30 Hz</span>
+                </div>
+
+                <div class="topic-list" id="topicList">
+                    <div class="topic-item">
+                        <div class="topic-meta">
+                            <span class="topic-name">/amr/cmd_vel</span>
+                            <span class="topic-type">geometry_msgs/Twist</span>
+                        </div>
+                        <div class="topic-val mono" id="topCmdVel">linear.x: 0.00, angular.z: 0.00</div>
+                    </div>
+
+                    <div class="topic-item">
+                        <div class="topic-meta">
+                            <span class="topic-name">/amr/odom</span>
+                            <span class="topic-type">nav_msgs/Odometry</span>
+                        </div>
+                        <div class="topic-val mono" id="topOdom">pose.pos: (0.0, 0.0)</div>
+                    </div>
+
+                    <div class="topic-item">
+                        <div class="topic-meta">
+                            <span class="topic-name">/amr/scan</span>
+                            <span class="topic-type">sensor_msgs/LaserScan</span>
+                        </div>
+                        <div class="topic-val mono" id="topScan">ranges: 360 beams, min_dist: 0.82m</div>
+                    </div>
+
+                    <div class="topic-item">
+                        <div class="topic-meta">
+                            <span class="topic-name">/fleet/p2p/intent</span>
+                            <span class="topic-type">synergy_msgs/P2PIntent</span>
+                        </div>
+                        <div class="topic-val mono" id="topIntent">waypoints: 4, eta: 3.2s, prio: 8</div>
+                    </div>
+
+                    <div class="topic-item">
+                        <div class="topic-meta">
+                            <span class="topic-name">/fleet/mrta/bids</span>
+                            <span class="topic-type">synergy_msgs/AuctionBid</span>
+                        </div>
+                        <div class="topic-val mono" id="topBid">last_auction: Won Order #1042 (Score: 92)</div>
+                    </div>
+
+                    <div class="topic-item">
+                        <div class="topic-meta">
+                            <span class="topic-name">/fleet/reservation</span>
+                            <span class="topic-type">synergy_msgs/SpatialToken</span>
+                        </div>
+                        <div class="topic-val mono" id="topReserve">claimed_zone: JX_2_3 (TTL: 1.8s)</div>
+                    </div>
+                </div>
+
+                <div class="section-label" style="margin-top:8px">DDS Middleware Telemetry</div>
+                <div class="dds-stats">
+                    <div class="dds-stat"><span class="card-k">Transport</span><span class="card-v mono">Zenoh Routerless</span></div>
+                    <div class="dds-stat"><span class="card-k">Packet Loss</span><span class="card-v mono green" id="ddsLoss">0.0%</span></div>
+                    <div class="dds-stat"><span class="card-k">Discovery</span><span class="card-v mono">P2P Multicast</span></div>
+                    <div class="dds-stat"><span class="card-k">Serializer</span><span class="card-v mono">CDR Zero-Copy</span></div>
+                </div>
+                
+                <div class="hint-footer">💡 Right-click floor to manually dispatch | Left-click AMR to inspect</div>
             </div>
-
-            <div class="row-card"><span class="card-k">Capacity</span><span class="card-v mono" id="iCap">500kg / 1.2 m/s</span></div>
-            <div class="row-card"><span class="card-k">Payload</span><span class="card-v" id="iPayload">—</span></div>
-            <div class="row-card">
-                <span class="card-k">Priority Score</span>
-                <span class="card-v amber" id="iScore">10</span>
-            </div>
-
-            <div class="section-label">Mesh Peers (Rc ≤ <span id="commRLabel">200</span>px)</div>
-            <div class="peer-list" id="iPeers"></div>
-
-            <div class="section-label">Decision Log</div>
-            <div class="log-box" id="iLog"></div>
-
-            <button class="kill-btn" id="killBtn"><span id="killText">Kill Node</span></button>
         </aside>
     </main>
 
