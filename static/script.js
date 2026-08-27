@@ -2522,7 +2522,7 @@
   }
 
   /* ================================================================
-     15. STARTUP SPLASH SCREEN (10-15s INITIALIZATION)
+     15. STARTUP SPLASH SCREEN (7-8s INITIALIZATION)
      ================================================================ */
   function startSplashLoading() {
     const splash = document.getElementById("splashScreen");
@@ -2532,7 +2532,7 @@
     const skipBtn = document.getElementById("splashSkipBtn");
     if (!splash || !bar) return;
 
-    const totalDuration = 12000; // 12 seconds
+    const totalDuration = 7500; // 7.5 seconds (7-8 sec range)
     const startTime = performance.now();
     let completed = false;
 
