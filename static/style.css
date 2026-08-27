@@ -382,8 +382,136 @@ body {
 }
 .dds-stat:hover { border-color: var(--border2); }
 
+/* ── STARTUP SPLASH SCREEN ───────────────────────────────── */
+
+.splash-overlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background: radial-gradient(circle at center, #0f131c 0%, #06070a 100%);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+.splash-overlay.hidden {
+    opacity: 0; visibility: hidden; pointer-events: none;
+}
+
+.splash-card {
+    max-width: 680px; width: 100%;
+    background: rgba(14, 17, 26, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.08);
+    backdrop-filter: blur(20px) saturate(1.4);
+    padding: 24px 28px;
+    display: flex; flex-direction: column; gap: 16px;
+    animation: splashPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes splashPop {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.splash-badge {
+    align-self: flex-start;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: var(--pill); padding: 3px 10px;
+    font-size: 9.5px; font-weight: 600; color: var(--sky); font-family: var(--mono);
+    letter-spacing: 0.02em;
+}
+.splash-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+    box-shadow: 0 0 8px #22c55e; animation: pulse 1.8s infinite;
+}
+
+.splash-title {
+    font-size: 18px; font-weight: 800; color: #fff; line-height: 1.35;
+    letter-spacing: -0.02em;
+}
+.splash-title span {
+    font-size: 14px; font-weight: 600; color: #94a3b8;
+}
+
+.splash-statement-box {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(234, 179, 8, 0.06);
+    border: 1px solid rgba(234, 179, 8, 0.25);
+    border-radius: 8px; padding: 10px 12px;
+}
+.statement-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.splash-statement {
+    font-size: 11px; color: #e2e8f0; line-height: 1.5; font-family: var(--sans);
+}
+.splash-statement b { color: #fde047; }
+
+.splash-fleet-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+.splash-bot-chip {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 9px;
+    display: flex; align-items: center; gap: 7px;
+    transition: all 0.2s ease;
+}
+.splash-bot-chip:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border2);
+}
+.bot-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.bot-info { display: flex; flex-direction: column; gap: 1px; }
+.bot-info b { font-size: 10px; color: #f8fafc; font-family: var(--mono); }
+.bot-info span { font-size: 8px; color: var(--t3); }
+
+.splash-progress-sec {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 4px;
+}
+.progress-labels {
+    display: flex; justify-content: space-between; align-items: center;
+}
+.progress-step {
+    font-size: 9.5px; color: var(--sky); font-weight: 500;
+}
+.progress-percent {
+    font-size: 11px; font-weight: 700; color: #22c55e;
+}
+.splash-bar-track {
+    width: 100%; height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px; overflow: hidden;
+}
+.splash-bar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #38bdf8, #22c55e);
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    transition: width 0.15s linear;
+}
+
+.splash-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 8px; border-top: 1px solid var(--border);
+    margin-top: 2px;
+}
+.splash-meta {
+    font-size: 8.5px; color: var(--t3); font-family: var(--mono);
+}
+.splash-skip-btn {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: var(--sky); font-size: 10px; font-weight: 700;
+    padding: 6px 14px; border-radius: var(--rs);
+    cursor: pointer; transition: all 0.15s ease;
+}
+.splash-skip-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: var(--sky); color: #fff;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
 @media (max-width: 900px) {
     .workspace { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     .inspector { max-height: 250px; }
     .wms-live-pill { display: none; }
+    .splash-fleet-grid { grid-template-columns: repeat(2, 1fr); }
 }

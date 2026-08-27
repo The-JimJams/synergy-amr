@@ -6,10 +6,65 @@
     <title>Edge-AI Based Distributed Fleet Coordination for AMRs in Smart Warehouses</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <!-- STARTUP SPLASH & LOADING MODAL (10-15s Initialization Screen) -->
+    <div class="splash-overlay" id="splashScreen">
+        <div class="splash-card">
+            <div class="splash-badge"><span class="splash-dot"></span> ROS 2 Humble · rmw_zenoh P2P Mesh · Edge Compute</div>
+            <h1 class="splash-title">
+                Edge-AI Based Distributed Fleet Coordination<br>
+                <span>for Autonomous Mobile Robots (AMRs) in Smart Warehouses</span>
+            </h1>
+            
+            <div class="splash-statement-box">
+                <span class="statement-icon">ℹ️</span>
+                <p class="splash-statement">
+                    <b>Demonstration Notice:</b> This is a sample simulation made to demonstrate the idea of 
+                    <b>Edge-AI Based Distributed Fleet Coordination for Autonomous Mobile Robots (AMRs) in Smart Warehouses</b>.
+                </p>
+            </div>
+
+            <!-- Fleet Hardware Grid -->
+            <div class="splash-fleet-grid">
+                <div class="splash-bot-chip chip-alpha">
+                    <span class="bot-dot" style="background:#38bdf8"></span>
+                    <div class="bot-info"><b>Robot Alpha (α)</b><span>Jetson Orin Nano · 500kg Heavy Lifter</span></div>
+                </div>
+                <div class="splash-bot-chip chip-beta">
+                    <span class="bot-dot" style="background:#f59e0b"></span>
+                    <div class="bot-info"><b>Robot Beta (β)</b><span>Raspberry Pi 5 · 2.1 m/s Agile Runner</span></div>
+                </div>
+                <div class="splash-bot-chip chip-gamma">
+                    <span class="bot-dot" style="background:#22c55e"></span>
+                    <div class="bot-info"><b>Robot Gamma (γ)</b><span>Jetson Orin NX · 250kg Standard Hauler</span></div>
+                </div>
+                <div class="splash-bot-chip chip-delta">
+                    <span class="bot-dot" style="background:#c084fc"></span>
+                    <div class="bot-info"><b>Robot Delta (δ)</b><span>Jetson AGX Orin · 1.8 m/s Pallet Mover</span></div>
+                </div>
+            </div>
+
+            <!-- Loading Progress Section -->
+            <div class="splash-progress-sec">
+                <div class="progress-labels">
+                    <span class="progress-step mono" id="splashStepText">Initializing ROS 2 Humble DDS & rmw_zenoh middleware...</span>
+                    <span class="progress-percent mono" id="splashPercent">0%</span>
+                </div>
+                <div class="splash-bar-track">
+                    <div class="splash-bar-fill" id="splashBarFill"></div>
+                </div>
+            </div>
+
+            <div class="splash-footer">
+                <span class="splash-meta">P2P Mesh · ORCA + SVO Altruism · DC-MRTA Distributed Auction</span>
+                <button class="splash-skip-btn" id="splashSkipBtn">Launch Simulator ▶</button>
+            </div>
+        </div>
+    </div>
 
     <!-- HEADER -->
     <header class="header" id="appHeader">

@@ -2522,6 +2522,72 @@
   }
 
   /* ================================================================
+     15. STARTUP SPLASH SCREEN (10-15s INITIALIZATION)
+     ================================================================ */
+  function startSplashLoading() {
+    const splash = document.getElementById("splashScreen");
+    const bar = document.getElementById("splashBarFill");
+    const pctEl = document.getElementById("splashPercent");
+    const stepEl = document.getElementById("splashStepText");
+    const skipBtn = document.getElementById("splashSkipBtn");
+    if (!splash || !bar) return;
+
+    const totalDuration = 12000; // 12 seconds
+    const startTime = performance.now();
+    let completed = false;
+
+    const steps = [
+      { at: 0, text: "Initializing ROS 2 Humble DDS & rmw_zenoh P2P middleware..." },
+      { at: 18, text: "Loading SLAM corridor topology & warehouse storage bays (A–H)..." },
+      { at: 38, text: "Calibrating ORCA & Social Value Orientation (SVO) collision avoidance..." },
+      { at: 60, text: "Synchronizing DC-MRTA task auctioning & spatial reservation token mesh..." },
+      { at: 82, text: "Bootstrapping 4 heterogeneous edge compute nodes (Jetson Orin & RPi 5)..." },
+      { at: 96, text: "All systems nominal. Launching decentralized fleet coordinator..." },
+    ];
+
+    function finishSplash() {
+      if (completed) return;
+      completed = true;
+      if (bar) bar.style.width = "100%";
+      if (pctEl) pctEl.textContent = "100%";
+      if (stepEl) stepEl.textContent = "All systems nominal. Ready!";
+      setTimeout(() => {
+        splash.classList.add("hidden");
+        showToast("⬡ Synergy AMR: 4-Bot Decentralized Fleet Online");
+      }, 350);
+    }
+
+    if (skipBtn) skipBtn.addEventListener("click", finishSplash);
+
+    function tick(now) {
+      if (completed) return;
+      const elapsed = now - startTime;
+      const progress = Math.min(100, (elapsed / totalDuration) * 100);
+
+      if (bar) bar.style.width = `${progress.toFixed(1)}%`;
+      if (pctEl) pctEl.textContent = `${Math.floor(progress)}%`;
+
+      // Update current step text
+      for (let i = steps.length - 1; i >= 0; i--) {
+        if (progress >= steps[i].at) {
+          if (stepEl && stepEl.textContent !== steps[i].text) {
+            stepEl.textContent = steps[i].text;
+          }
+          break;
+        }
+      }
+
+      if (progress < 100) {
+        requestAnimationFrame(tick);
+      } else {
+        finishSplash();
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  /* ================================================================
      16. INITIALIZATION
      ================================================================ */
   function init() {
@@ -2531,6 +2597,7 @@
     initBots();
     setupEvents();
     loadScenario(1);
+    startSplashLoading();
     requestAnimationFrame(loop);
   }
 
